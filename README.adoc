@@ -1,0 +1,223 @@
+= 自分だけのフェディバースのマイクロブログを作ろう！
+:doctype: book
+:lang: ja
+:experimental:
+:toc:
+:imagesdir: ./images
+
+== 序文
+
+NOTE: もしlink:https://ja.wikipedia.org/wiki/Fediverse[フェディバース]（fediverse）footnote:[Mastodon、Misskey、Lemmy、Pixelfed、PeerTubeなど、フェディバースのネットワークのいくつかはすでにご存知かもしれない。]やlink:https://activitypub.rocks/[ActivityPub]といった用語に馴染みがない場合は、関連する検索をもう少し行ってからこのチュートリアルに従うことをお勧めします。
+
+このチュートリアルでは、ActivityPubサーバーフレームワークであるlink:https://fedify.dev/[Fedify]を使用して、link:https://joinmastodon.org/ja[Mastodon]やlink:https://misskey-hub.net/ja/[Misskey]のようなActivityPubプロトコルを実装するlink:https://ja.wikipedia.org/wiki/%E3%83%9F%E3%83%8B%E3%83%96%E3%83%AD%E3%82%B0[マイクロブログ]（microblog）を作成します。このチュートリアルは、Fedifyの基本的な動作原理を理解するよりも、Fedifyの活用方法により焦点を当てています。
+
+.Fedifyのロゴ
+image::logo.png[Fedifyのロゴ]
+
+Fedifyは、ActivityPubやその他の標準規格（総称して「フェディバース」と呼ばれる）を利用した連合サーバーアプリを作る為のTypeScriptライブラリです。連合サーバーアプリを作る際の複雑さやボイラプレートコードを排除し、ビジネスロジックやユーザーエクスペリエンスに集中できる様にすることを目的としています。
+
+Fedifyプロジェクトについてもっとお知りになりたい方は、以下の資料をご覧ください：
+
+- ウェブサイト：<https://fedify.dev/>
+- GitHub：<https://github.com/dahlia/fedify>
+- APIリファレンス：<https://jsr.io/@fedify/fedify>
+- 使用例：<https://github.com/dahlia/fedify/tree/main/examples>
+
+ご質問、ご提案、フィードバックなどございましたら、お気軽にlink:https://github.com/dahlia/fedify/discussions[GitHub Discussions]にご参加いただくか、フェディバースのlink:https://hollo.social/@fedify[@fedify@hollo.social]（日本語対応）までご連絡ください！
+
+=== 対象読者
+
+このチュートリアルは、Fedifyを学んでActivityPubサーバーソフトウェアを作ってみたい方を対象としています。
+
+HTMLやHTTPを使用してウェブアプリケーションを作成した経験があり、コマンドラインインターフェース、SQL、JSON、基本的なJavaScriptなどを理解していることを前提としています。ただし、TypeScriptやJSX、ActivityPub、Fedifyについては、このチュートリアルで必要な範囲で説明しますので、知らなくても大丈夫です。
+
+ActivityPubソフトウェアを作成した経験は必要ありませんが、MastodonやMisskeyのようなActivityPubソフトウェアを少なくとも1つは使用したことがあることを想定しています。そうすることで、私たちが何を作ろうとしているのかをイメージしやすくなります。
+
+=== 目標
+
+このチュートリアルでは、Fedifyを使用してActivityPubを通じて他の連合ソフトウェアやサービスと通信可能な個人用マイクロブログを作成します。このソフトウェアには以下の機能が含まれます：
+
+- ユーザーは1つのアカウントのみ作成できます。
+- フェディバース内の他のアカウントがユーザーをフォローできます。
+- フォロワーはユーザーのフォローを開始したり、やめたりできます。
+- ユーザーは自分のフォロワーリストを閲覧できます。
+- ユーザーは投稿を作成できます。
+- ユーザーの投稿はフェディバース内のフォロワーに表示されます。
+- ユーザーはフェディバース内の他のアカウントをフォローできます。
+- ユーザーは自分がフォローしているアカウントのリストを閲覧できます。
+- ユーザーは自分がフォローしているアカウントが作成した投稿を時系列順のリストで閲覧できます。
+
+チュートリアルを単純化するために、以下の機能制約を設けています：
+
+- アカウントプロフィール（自己紹介文、画像など）は設定できません。
+- 一度作成したアカウントは削除できません。
+- 一度投稿した内容は編集や削除ができません。
+- 一度フォローした他のアカウントのフォローを解除することはできません。
+- いいね、共有、コメント機能はありません。
+- 検索機能はありません。
+- 認証や権限チェックなどのセキュリティ機能はありません。
+
+もちろん、チュートリアルを最後まで進めた後で機能を追加することは自由です。それは良い練習になるでしょう。
+
+完成したソースコードはlink:https://github.com/dahlia/microblog[GitHubリポジトリ]にアップロードされており、各実装段階に応じてコミットが分かれていますので、参考にしてください。
+
+== 開発環境のセットアップ
+
+=== Node.jsのインストール
+
+FedifyはJavaScriptランタイムとしてlink:https://deno.com/[Deno]、link:https://bun.sh/[Bun]、link:https://nodejs.org/[Node.js]の3つをサポートしています。その中でもNode.jsが最も広く使われているため、このチュートリアルではNode.jsを基準に説明を進めていきます。
+
+TIP: JavaScriptランタイムとは、JavaScriptコードを実行するプラットフォームのことです。ウェブブラウザもJavaScriptランタイムの一つであり、コマンドラインやサーバーではNode.jsなどが広く使われています。最近ではlink:https://workers.cloudflare.com/[Cloudflare Workers]のようなクラウドエッジ機能もJavaScriptランタイムの一つとして注目を集めています。
+
+Fedifyを使用するにはNode.js 20.0.0以上のバージョンが必要です。link:https://nodejs.org/ja/download/package-manager[様々なインストール方法]がありますので、自分に最適な方法でNode.jsをインストールしてください。
+
+Node.jsがインストールされると、`node`コマンドと`npm`コマンドが使えるようになります：
+
+[source,console]
+----
+$ node --version
+$ npm --version
+----
+
+=== ``fedify``コマンドのインストール
+
+Fedifyプロジェクトをセットアップするために、``fedify``コマンドをシステムにインストールする必要があります。link:https://fedify.dev/cli#installation[複数のインストール方法]がありますが、``npm``コマンドを使用するのが最も簡単です：
+
+[source,console]
+----
+$ npm install -g @fedify/cli
+----
+
+インストールが完了したら、``fedify``コマンドが使用可能かどうか確認しましょう。以下のコマンドで``fedify``コマンドのバージョンを確認できます。
+
+[source,console]
+----
+$ fedify --version
+----
+
+表示されたバージョン番号が1.0.0以上であることを確認してください。それより古いバージョンだと、このチュートリアルを正しく進めることができません。
+
+=== ``fedify init``でプロジェクトの初期化
+
+新しいFedifyプロジェクトを開始するために、作業ディレクトリのパスを決めましょう。このチュートリアルでは__microblog__と名付けることにします。``fedify init``コマンドの後にディレクトリパスを指定して実行します（ディレクトリがまだ存在しなくても大丈夫です）：
+
+[source,console]
+----
+$ fedify init microblog
+----
+
+``fedify init``コマンドを実行すると、以下のような質問プロンプトが表示されます。順番にmenu:Node.js[npm > Hono > In-memory > In-process]を選択します：
+
+[listing]
+----
+             ___      _____        _ _  __
+            /'_')    |  ___|__  __| (_)/ _|_   _
+     .-^^^-/  /      | |_ / _ \/ _` | | |_| | | |
+   __/       /       |  _|  __/ (_| | |  _| |_| |
+  <__.|_|-|_|        |_|  \___|\__,_|_|_|  \__, |
+                                           |___/
+
+? Choose the JavaScript runtime to use
+  Deno
+  Bun
+❯ Node.js
+
+? Choose the package manager to use
+❯ npm
+  Yarn
+  pnpm
+
+? Choose the web framework to integrate Fedify with
+  Bare-bones
+  Fresh
+❯ Hono
+  Express
+  Nitro
+
+? Choose the key-value store to use for caching
+❯ In-memory
+  Redis
+  PostgreSQL
+  Deno KV
+
+? Choose the message queue to use for background jobs
+❯ In-process
+  Redis
+  PostgreSQL
+  Deno KV
+----
+
+NOTE: Fedifyはフルスタックフレームワークではなく、ActivityPubサーバーの実装に特化したフレームワークです。したがって、他のウェブフレームワークと一緒に使用することを前提に設計されています。このチュートリアルでは、ウェブフレームワークとしてlink:https://hono.dev/[Hono]を採用し、Fedifyと共に使用します。
+
+しばらくすると、作業ディレクトリ内に以下のような構造でファイルが生成されるのが確認できます：
+
+* _.vscode/_ — Visual Studio Code関連の設定
+** _extensions.json_ — Visual Studio Code推奨拡張機能
+** _settings.json_ — Visual Studio Code設定
+* _node_modules/_ — 依存パッケージがインストールされるディレクトリ（内容省略）
+* _src/_ — ソースコード
+** _app.tsx_ — ActivityPubと関係ないサーバー
+** _federation.ts_ — ActivityPubサーバー
+** _index.ts_ — エントリーポイント
+** _logging.ts_ — ロギング設定
+* _biome.json_ — フォーマッターおよびリント設定
+* _package.json_ — パッケージメタデータ
+* _tsconfig.json_ — TypeScript設定
+
+想像できると思いますが、JavaScriptではなくTypeScriptを使用するため、__.js__ファイルではなく__.ts__および__.tsx__ファイルがあります。
+
+生成されたソースコードは動作するデモです。まずはこの状態で正常に動作するか確認しましょう：
+
+[source,console]
+$ npm run dev
+
+上記のコマンドを実行すると、kbd:[Ctrl+C]キーを押すまでサーバーが実行されたままになります：
+
+[listing]
+Server started at http://0.0.0.0:8000
+
+サーバーが実行された状態で、新しいターミナルタブを開き、以下のコマンドを実行します：
+
+[source,console]
+$ fedify lookup http://localhost:8000/users/john
+
+上記のコマンドは、ローカルで起動したActivityPubサーバーの1つのアクター（actor）を照会したものです。ActivityPubにおいて、アクターは様々なActivityPubサーバー間でアクセス可能なアカウントだと考えてください。
+
+以下のような結果が出力されれば正常です：
+
+[listing]
+✔ Looking up the object...
+Person {
+  id: URL "http://localhost:8000/users/john",
+  name: "john",
+  preferredUsername: "john"
+}
+
+この結果から、__/users/john__パスに位置するアクターオブジェクトの種類が``Person``であり、そのIDが__http://localhost:8000/users/john__、名前が__john__、ユーザー名も__john__であることがわかります。
+
+[TIP]
+====
+``fedify lookup``はActivityPubオブジェクトを照会するコマンドです。これはMastodonで該当URIを検索するのと同じ動作をします。（もちろん、現在皆さんのサーバーはローカルでのみアクセス可能なため、まだMastodonで検索しても結果は表示されません。）
+
+``fedify lookup``コマンドよりも``curl``を好む場合は、以下のコマンドでもアクター照会が可能です（``-H``オプションで``Accept``ヘッダーを一緒に送信することに注意してください）：
+
+[source,console]
+$ curl -H"Accept: application/activity+json" http://localhost:8000/users/john
+
+ただし、上記のように照会すると、その結果は人間の目で確認しにくいJSON形式になります。システムに``jq``コマンドもインストールされている場合は、``curl``と``jq``を組み合わせて使用することもできます：
+
+[source,console]
+$ curl -H"Accept: application/activity+json" http://localhost:8000/users/john | jq .
+====
+
+=== Visual Studio Code
+
+https://code.visualstudio.com/[Visual Studio Code]が皆さんのお気に入りのエディタでない可能性もあります。しかし、このチュートリアルを進める間はVisual Studio Codeを使用することをお勧めします。なぜなら、TypeScriptを使用する必要があり、Visual Studio Codeは現存する最も便利で優れたTypeScript IDEだからです。また、生成されたプロジェクトセットアップにはすでにVisual Studio Codeの設定が整っているため、フォーマッターやリントなどと格闘する必要もありません。
+
+CAUTION: Visual Studioと混同しないようにしてください。Visual Studio CodeとVisual Studioはブランドを共有しているだけで、まったく異なるソフトウェアです。
+
+https://code.visualstudio.com/docs/setup/setup-overview[Visual Studio Codeをインストール]した後、menu:ファイル[フォルダを開く…]メニューをクリックして作業ディレクトリを読み込んでください。
+
+右下に「このリポジトリ 用のおすすめ拡張機能 'Biome' 拡張機能 提供元: biomejs をインストールしますか?」と尋ねるウィンドウが表示された場合は、btn:[インストール]ボタンをクリックしてその拡張機能をインストールしてください。この拡張機能をインストールすると、TypeScriptコードを作成する際にインデントや空白など、コードスタイルと格闘する必要がなく、自動的にコードがフォーマットされます。
+
+TIP: 熱心なEmacsまたはVimユーザーの場合、使い慣れたお気に入りのエディタを使用することを止めはしません。ただし、TypeScript LSPの設定は確認しておくことをお勧めします。TypeScript LSPの設定の有無により、生産性に大きな差が出るからです。
