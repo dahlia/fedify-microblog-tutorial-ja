@@ -221,3 +221,345 @@ https://code.visualstudio.com/docs/setup/setup-overview[Visual Studio Codeをイ
 右下に「このリポジトリ 用のおすすめ拡張機能 'Biome' 拡張機能 提供元: biomejs をインストールしますか?」と尋ねるウィンドウが表示された場合は、btn:[インストール]ボタンをクリックしてその拡張機能をインストールしてください。この拡張機能をインストールすると、TypeScriptコードを作成する際にインデントや空白など、コードスタイルと格闘する必要がなく、自動的にコードがフォーマットされます。
 
 TIP: 熱心なEmacsまたはVimユーザーの場合、使い慣れたお気に入りのエディタを使用することを止めはしません。ただし、TypeScript LSPの設定は確認しておくことをお勧めします。TypeScript LSPの設定の有無により、生産性に大きな差が出るからです。
+
+== 予備知識
+
+=== TypeScript
+
+コードを修正する前に、簡単にTypeScriptについて触れておきましょう。すでにTypeScriptに慣れている方は、この章をスキップしても構いません。
+
+TypeScriptはJavaScriptに静的型チェックを追加したものです。TypeScriptの文法はJavaScriptの文法とほぼ同じですが、変数や関数の文法に型を指定できるという大きな違いがあります。型指定は変数やパラメータの後にコロン（`:`）をつけて表します。
+
+例えば、次のコードは``foo``変数が文字列（`string`）であることを示しています：
+
+[source,typescript]
+let foo: string;
+
+上記のように宣言された`foo`変数に文字列以外の型の値を代入しようとすると、Visual Studio Codeが**実行する前に**赤い下線を引いて型エラーを表示します：
+
+[source,typescript]
+----
+foo = 123;  // <1>
+----
+<1> ts(2322): 型 'number' を型 'string' に割り当てることはできません。
+
+コーディング中に赤い下線が表示されたら、無視せずに対処してください。無視してプログラムを実行すると、その部分で実際にエラーが発生する可能性が高いです。
+
+TypeScriptでコーディングをしていて最も頻繁に遭遇する型エラーは、``null``の可能性があるエラーです。例えば、次のコードでは``bar``変数が文字列（`string`）である可能性もあれば``null``である可能性もある（`string | null`）と示されています：
+
+[source,typescript]
+const bar: string | null = someFunction();
+
+この変数の内容から最初の文字を取り出そうとして、次のようなコードを書くとどうなるでしょうか：
+
+[source,typescript]
+----
+const firstChar = bar.charAt(0);  // <1>
+----
+<1> ts(18047): 'bar' は 'null' の可能性があります。
+
+上記のように型エラーが発生します。``bar``が場合によっては``null``である可能性があり、その場合に``null.charAt(0)``を呼び出すとエラーが発生する可能性があるため、コードを修正するよう指摘しています。このような場合、以下のように``null``の場合の処理を追加する必要があります：
+
+[source,typescript]
+const firstChar = bar === null ? "" : bar.charAt(0);
+
+このように、TypeScriptはコーディング時に気づかなかった場合の数を想起させ、バグを未然に防ぐのに役立ちます。
+
+また、TypeScriptの副次的な利点の一つは、自動補完が機能することです。例えば、``foo.``まで入力すると、文字列オブジェクトが持つメソッドのリストが表示され、その中から選択できます。これにより、一々ドキュメントを確認しなくても迅速にコーディングが可能になります。
+
+このチュートリアルを進めながら、TypeScriptの魅力も一緒に感じていただければと思います。何より、FedifyはTypeScriptと一緒に使用したときに最も良い体験が得られるのです。
+
+TIP: TypeScriptをしっかりじっくり学びたい場合は、公式のlink:https://www.typescriptlang.org/docs/handbook/intro.html[TypeScriptハンドブック]（英語）を読むことをお勧めします。全部読むのに約30分ほどかかります。
+
+=== JSX
+
+JSXはJavaScriptコード内にXMLまたはHTMLを挿入できるようにするJavaScriptの文法拡張です。TypeScriptでも使用でき、その場合はTSXと呼ぶこともあります。このチュートリアルでは、すべてのHTMLをJSX文法を通じてJavaScriptコード内に記述します。JSXにすでに慣れている方は、この章をスキップして構いません。
+
+例えば、以下のコードは``<div>``要素が最上位にあるHTMLツリーを``html``変数に代入します：
+
+[source,tsx]
+const html = <div>
+  <p id="greet">こんにちは、<strong>JSX</strong>！</p>
+</div>;
+
+中括弧を使用してJavaScript式を挿入することも可能です（以下のコードは、もちろん``getName()``関数が存在すると仮定しています）：
+
+[source,tsx]
+const html = <div title={"こんにちは、" + getName() + "！"}>
+  <p id="greet">こんにちは、<strong>{getName()}</strong>！</p>
+</div>;
+
+JSXの特徴の1つは、コンポーネント（component）と呼ばれる独自のタグを定義できることです。コンポーネントは普通のJavaScript関数として定義できます。例えば、以下のコードは``<Container>``コンポーネントを定義して使用する方法を示しています（コンポーネント名は一般的にPascalCaseスタイルに従います）：
+
+[source,tsx]
+----
+import type { FC } from "hono/jsx";
+
+function getName() {
+  return "JSX";
+}
+
+interface ContainerProps {
+  name: string;
+}
+
+const Container: FC<ContainerProps> = (props) => {
+  return <div title={"こんにちは、" + props.name + "！"}>{props.children}</div>;
+};
+
+const html = <Container name={getName()}>
+  <p id="greet">こんにちは、<strong>{getName()}</strong>！</p>
+</Container>;
+----
+
+上記のコードで``FC``は、我々が使用するウェブフレームワークであるlink:https://hono.dev/[Hono]が提供するもので、コンポーネントの型を定義するのに役立ちます。``FC``はlink:https://www.typescriptlang.org/docs/handbook/2/generics.html[ジェネリック型]（generic type）で、``FC<ContainerProps>``のように山括弧内に入る型が型引数です。ここでは型引数としてプロップ（props）の形式を指定しています。プロップとは、コンポーネントに渡すパラメータのことを指します。上記のコードでは、``<Container>``コンポーネントのプロップ形式として`ContainerProps`インターフェースを宣言して使用しています。
+
+[NOTE]
+====
+ジェネリック型の型引数は複数になる場合があり、カンマで各引数を区切ります。例えば、``Foo<A, B>``はジェネリック型``Foo``に型引数``A``と``B``を適用したものです。
+
+また、ジェネリック関数というものもあり、``someFunction<A, B>(foo, bar)``のように表記します。
+
+型引数が1つの場合、型引数を囲む山括弧がXML/HTMLタグのように見えますが、JSXの機能とは無関係です。
+
+- `FC<ContainerProps>`：ジェネリック型`FC`に型引数``ContainerProps``を適用したもの。
+- `<Container>`：``<Container>``という名前のコンポーネントタグを開いたもの。``</Container>``で閉じる必要があります。
+====
+
+プロップとして渡されるもののうち、``children``は特に注目する必要があります。これはコンポーネントの子要素が``children``プロップとして渡されるためです。結果として、上記のコードで``html``変数には``<div title="こんにちは、JSX！"><p id="greet">こんにちは、<strong>JSX</strong>！</p></div>``というHTMLツリーが代入されることになります。
+
+TIP: JSXはReactプロジェクトで発明され、広く使用され始めました。JSXについて詳しく知りたい場合は、Reactのドキュメントのlink:https://ja.react.dev/learn/writing-markup-with-jsx[JSXでマークアップを記述する]およびlink:https://ja.react.dev/learn/javascript-in-jsx-with-curly-braces[JSXに波括弧でJavaScriptを含める]セクションを読んでみてください。
+
+== アカウント作成ページ
+
+さて、本格的な開発に取り掛かりましょう。
+
+最初に作成するのはアカウント作成ページです。アカウントを作成しないと投稿もできず、他のアカウントをフォローすることもできませんからね。まずは見える部分から作り始めましょう。
+
+まず、__src/views.tsx__ファイルを作成します。そして、そのファイル内にJSXで``<Layout>``コンポーネントを定義します：
+
+[source,tsx]
+----
+import type { FC } from "hono/jsx";
+
+export const Layout: FC = (props) => (
+  <html lang="en">
+    <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <meta name="color-scheme" content="light dark" />
+      <title>Microblog</title>
+      <link
+        rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"
+      />
+    </head>
+    <body>
+      <main class="container">{props.children}</main>
+    </body>
+  </html>
+);
+----
+
+デザインに多くの時間を費やさないために、link:https://picocss.com/[Pico CSS]というCSSフレームワークを使用することにします。
+
+TIP: 変数やパラメータの型をTypeScriptの型チェッカーが推論できる場合、上記の``props``のように型表記を省略しても問題ありません。このように型表記が省略されている場合でも、Visual Studio Codeで変数名にマウスカーソルを合わせると、その変数がどの型であるかを確認できます。
+
+次に、同じファイル内でレイアウトの中に入る``<SetupForm>``コンポーネントを定義します：
+
+[source,tsx]
+----
+export const SetupForm: FC = () => (
+  <>
+    <h1>Set up your microblog</h1>
+    <form method="post" action="/setup">
+      <fieldset>
+        <label>
+          Username{" "}
+          <input
+            type="text"
+            name="username"
+            required
+            maxlength={50}
+            pattern="^[a-z0-9_\-]+$"
+          />
+        </label>
+      </fieldset>
+      <input type="submit" value="Setup" />
+    </form>
+  </>
+);
+----
+
+JSXでは最上位に1つの要素しか置けませんが、``<SetupForm>``コンポーネントでは``<h1>``と``<form>``の2つの要素を最上位に置いています。そのため、これを1つの要素のようにまとめるために、空のタグの形の``<>``と``</>``で囲んでいます。これをフラグメント（fragment）と呼びます。
+
+定義したコンポーネントを組み合わせて使用する番です。__src/app.tsx__ファイルで、先ほど定義した2つのコンポーネントを``import``します：
+
+[source,typescript]
+import { Layout, SetupForm } from "./views.tsx";
+
+そして、__/setup__ページで先ほど作成したアカウント作成フォームを表示します：
+
+[source,tsx]
+app.get("/setup", (c) =>
+  c.html(
+    <Layout>
+      <SetupForm />
+    </Layout>,
+  ),
+);
+
+さて、それではウェブブラウザで<http://localhost:8000/setup>ページを開いてみましょう。以下のような画面が表示されれば正常です：
+
+.アカウント作成ページ
+image::account-creation-page.png[アカウント作成ページ]
+
+NOTE: JSXを使用するには、ソースファイルの拡張子が__.jsx__または__.tsx__である必要があります。この章で編集した2つのファイルの拡張子がどちらも__.tsx__であることに注意してください。
+
+=== データベースのセットアップ
+
+さて、見える部分を実装したので、次は動作を実装する番です。アカウント情報を保存する場所が必要ですが、link:https://www.sqlite.org/[SQLite]を使用することにしましょう。SQLiteは小規模なアプリケーションに適したリレーショナルデータベースです。
+
+まずはアカウント情報を格納するテーブルを定義しましょう。今後、すべてのテーブル定義は__src/schema.sql__ファイルに記述することにします。アカウント情報は``users``テーブルに格納します：
+
+[source,sql]
+----
+CREATE TABLE IF NOT EXISTS users (
+  id       INTEGER NOT NULL PRIMARY KEY CHECK (id = 1),
+  username TEXT    NOT NULL UNIQUE      CHECK (trim(lower(username)) = username
+                                               AND username <> ''
+                                               AND length(username) <= 50)
+);
+----
+
+我々が作成するマイクロブログは1つのアカウントしか作成できないので、主キーである`id`カラムが``1``以外の値を許可しないように制約をかけました。これにより、``users``テーブルには2つ以上のレコードを格納できなくなります。また、アカウントIDを格納する``username``カラムが空の文字列や長すぎる文字列を許可しないように制約を設けました。
+
+では、``users``テーブルを作成するために__src/schema.sql__ファイルを実行する必要があります。そのためには``sqlite3``コマンドが必要ですが、link:https://www.sqlite.org/download.html[SQLiteのウェブサイトからダウンロードするか]、各プラットフォームのパッケージマネージャーでインストールできます。macOSの場合は、オペレーティングシステムに組み込まれているので、別途ダウンロードする必要はありません。直接ダウンロードする場合は、オペレーティングシステムに合った__sqlite-tools-*.zip__ファイルをダウンロードして解凍してください。パッケージマネージャーを使用する場合は、次のコマンドでインストールすることもできます：
+
+[source,console]
+----
+$ sudo apt install sqlite3  # <1>
+$ sudo dnf install sqlite   # <2>
+$ choco install sqlite  # <3>
+$ scoop install sqlite  # <4>
+$ winget install SQLite.SQLite  # <5>
+----
+<1> DebianおよびUbuntu
+<2> FedoraおよびRHEL
+<3> Chocolatey
+<4> Scoop
+<5> Windows Package Manager
+
+さて、``sqlite3``コマンドの準備ができたら、これを使用してデータベースファイルを作成しましょう：
+
+[source,console]
+$ sqlite3 microblog.sqlite3 < src/schema.sql
+
+上記のコマンドを実行すると__microblog.sqlite3__ファイルが作成され、この中にSQLiteデータが保存されます。
+
+=== アプリからデータベースに接続
+
+これで、私たちが作成するアプリからSQLiteデータベースを使用するだけになりました。Node.jsでSQLiteデータベースを使用するには、SQLiteドライバーライブラリが必要です。ここではlink:https://github.com/WiseLibs/better-sqlite3[better-sqlite3]パッケージを使用することにします。パッケージは``npm``コマンドで簡単にインストールできます：
+
+[source,console]
+$ npm add better-sqlite3
+$ npm add --save-dev @types/better-sqlite3
+
+[TIP]
+====
+https://www.npmjs.com/package/@types/better-sqlite3[@types/better-sqlite3]パッケージは、TypeScript用にbetter-sqlite3パッケージのAPIに関する型情報を含んでいます。このパッケージをインストールすることで、Visual Studio Codeで編集する際に自動補完や型チェックが可能になります。
+
+このように、@types/スコープ内にあるパッケージをlink:https://github.com/DefinitelyTyped/DefinitelyTyped[Definitely Typed]パッケージと呼びます。あるライブラリがTypeScriptで書かれていない場合、コミュニティが型情報を追加して作成したパッケージです。
+====
+
+パッケージをインストールしたので、このパッケージを使用してデータベースに接続するコードを書きましょう。__src/db.ts__という新しいファイルを作成し、以下のようにコーディングします：
+
+[source,typescript]
+----
+import Database from "better-sqlite3";
+
+const db = new Database("microblog.sqlite3");
+db.pragma("journal_mode = WAL");
+db.pragma("foreign_keys = ON");
+
+export default db;
+----
+
+[TIP]
+====
+参考までに、``db.pragma()``関数を通じて設定した内容は以下のような効果があります：
+
+- https://www.sqlite.org/wal.html[`journal_mode = WAL`]：SQLiteでアトミックなコミットとロールバックを実装する方法としてlink:https://ja.wikipedia.org/wiki/%E3%83%AD%E3%82%B0%E5%85%88%E8%A1%8C%E6%9B%B8%E3%81%8D%E8%BE%BC%E3%81%BF[ログ先行書き込み]モードを採用します。このモードは、デフォルトのlink:https://www.sqlite.org/lockingv3.html#rollback[ロールバックジャーナル]モードに比べて、ほとんどの場合でパフォーマンスが優れています。
+- https://www.sqlite.org/foreignkeys.html[`foreign_keys = ON`]：SQLiteではデフォルトで外部キー制約をチェックしません。この設定をオンにすると外部キー制約をチェックするようになり、データの整合性を保つのに役立ちます。
+====
+
+そして、``users``テーブルに保存されるレコードをJavaScriptで表現する型を宣言しましょう。__src/schema.ts__ファイルを作成し、以下のように``User``型を定義します：
+
+[source,typescript]
+export interface User {
+  id: number;
+  username: string;
+}
+
+=== レコードの挿入
+
+データベースに接続したので、レコードを挿入する番です。
+
+まず__src/app.tsx__ファイルを開き、レコード挿入に使用する``db``オブジェクトと``User``型を``import``します：
+
+[source,typescript]
+import db from "./db.ts";
+import type { User } from "./schema.ts";
+
+``POST /setup``ハンドラを実装します：
+
+[source,typescript]
+----
+app.post("/setup", async (c) => {
+  // アカウントが既に存在するか確認
+  const user = db.prepare<unknown[], User>("SELECT * FROM users LIMIT 1").get();
+  if (user != null) return c.redirect("/");
+
+  const form = await c.req.formData();
+  const username = form.get("username");
+  if (typeof username !== "string" || !username.match(/^[a-z0-9_-]{1,50}$/)) {
+    return c.redirect("/setup");
+  }
+  db.prepare("INSERT INTO users (username) VALUES (?)").run(username);
+  return c.redirect("/");
+});
+----
+
+先ほど作成した``GET /setup``ハンドラにもアカウントが既に存在するかチェックするコードを追加します：
+
+[source,tsx]
+----
+app.get("/setup", (c) => {
+  // アカウントが既に存在するか確認
+  const user = db.prepare<unknown[], User>("SELECT * FROM users LIMIT 1").get();
+  if (user != null) return c.redirect("/");
+
+  return c.html(
+    <Layout>
+      <SetupForm />
+    </Layout>,
+  );
+});
+----
+
+=== テスト
+
+これでアカウント作成機能がひととおり実装されたので、実際に使ってみましょう。ウェブブラウザで<http://localhost:8000/setup>ページを開いてアカウントを作成してください。このチュートリアルでは、これ以降、ユーザー名として__johndoe__を使用したと仮定します。作成できたら、SQLiteデータベースにレコードが正しく挿入されたか確認もしてみましょう：
+
+[source,console]
+$ echo "SELECT * FROM users;" | sqlite3 -table microblog.sqlite3
+
+レコードが正しく挿入されていれば、以下のような出力が表示されるはずです（もちろん、``johndoe``は皆さんが入力したユーザー名によって異なります）：
+
+[cols="1,1"]
+|===
+| `id` | `username`
+
+| `1`
+| `johndoe`
+|===
