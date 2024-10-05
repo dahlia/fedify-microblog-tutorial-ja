@@ -12,7 +12,7 @@ NOTE: もしlink:https://ja.wikipedia.org/wiki/Fediverse[フェディバース]�
 このチュートリアルでは、ActivityPubサーバーフレームワークであるlink:https://fedify.dev/[Fedify]を使用して、link:https://joinmastodon.org/ja[Mastodon]やlink:https://misskey-hub.net/ja/[Misskey]のようなActivityPubプロトコルを実装するlink:https://ja.wikipedia.org/wiki/%E3%83%9F%E3%83%8B%E3%83%96%E3%83%AD%E3%82%B0[マイクロブログ]（microblog）を作成します。このチュートリアルは、Fedifyの基本的な動作原理を理解するよりも、Fedifyの活用方法により焦点を当てています。
 
 .Fedifyのロゴ
-image::logo.png[Fedifyのロゴ]
+image::logo.png[Fedifyのロゴ,align=center]
 
 Fedifyは、ActivityPubやその他の標準規格（総称して「フェディバース」と呼ばれる）を利用した連合サーバーアプリを作る為のTypeScriptライブラリです。連合サーバーアプリを作る際の複雑さやボイラプレートコードを排除し、ビジネスロジックやユーザーエクスペリエンスに集中できる様にすることを目的としています。
 
@@ -412,7 +412,7 @@ app.get("/setup", (c) =>
 さて、それではウェブブラウザで<http://localhost:8000/setup>ページを開いてみましょう。以下のような画面が表示されれば正常です：
 
 .アカウント作成ページ
-image::account-creation-page.png[アカウント作成ページ]
+image::account-creation-page.png[アカウント作成ページ,align=center]
 
 NOTE: JSXを使用するには、ソースファイルの拡張子が__.jsx__または__.tsx__である必要があります。この章で編集した2つのファイルの拡張子がどちらも__.tsx__であることに注意してください。
 
@@ -532,7 +532,7 @@ app.post("/setup", async (c) => {
 
 先ほど作成した``GET /setup``ハンドラにもアカウントが既に存在するかチェックするコードを追加します：
 
-[source,tsx]
+[source,tsx,highlight=2..4]
 ----
 app.get("/setup", (c) => {
   // アカウントが既に存在するか確認
@@ -563,3 +563,404 @@ $ echo "SELECT * FROM users;" | sqlite3 -table microblog.sqlite3
 | `1`
 | `johndoe`
 |===
+
+== プロフィールページ
+
+これでアカウントが作成されたので、アカウント情報を表示するプロフィールページを実装しましょう。表示する情報はほとんどありませんが。
+
+今回も見える部分から作業を始めましょう。__src/views.tsx__ファイルに``<Profile>``コンポーネントを定義します：
+
+[source,tsx]
+----
+export interface ProfileProps {
+  name: string;
+  handle: string;
+}
+
+export const Profile: FC<ProfileProps> = ({ name, handle }) => (
+  <>
+    <hgroup>
+      <h1>{name}</h1>
+      <p style="user-select: all;">{handle}</p>
+    </hgroup>
+  </>
+);
+----
+
+そして__src/app.tsx__ファイルで定義したコンポーネントを``import``します：
+
+[source,typescript]
+import { Layout, Profile, SetupForm } from "./views.tsx";
+
+そして``<Profile>``コンポーネントを表示する``GET /users/{username}``ハンドラを追加します：
+
+[source,tsx]
+----
+app.get("/users/:username", async (c) => {
+  const user = db
+    .prepare<unknown[], User>("SELECT * FROM users WHERE username = ?")
+    .get(c.req.param("username"));
+  if (user == null) return c.notFound();
+
+  const url = new URL(c.req.url);
+  const handle = `@${user.username}@${url.host}`;
+  return c.html(
+    <Layout>
+      <Profile name={user.username} handle={handle} />
+    </Layout>,
+  );
+});
+----
+
+ここまでできたらテストをしてみましょう。ウェブブラウザで<http://localhost:8000/users/johndoe>ページを開いてみてください（アカウント作成時にユーザー名を``johndoe``にした場合。そうでない場合はURLを変更する必要があります）。以下のような画面が表示されるはずです：
+
+.プロフィールページ
+image::profile-page.png[プロフィールページ,align=center]
+
+[TIP]
+====
+フェディバースハンドル（fediverse handle）、略してハンドルとは、フェディバース内でアカウントを指す一意なアドレスのようなものです。例えば``+@hongminhee@fedibird.com+``のような形をしています。メールアドレスに似た形をしていますが、実際の構成もメールアドレスに似ています。最初に``@``が来て、その後に名前、そして再び``@``が来た後、最後にアカウントが属するサーバーのドメイン名が来ます。時々、最初の``@``が省略されることもあります。
+
+技術的には、ハンドルはlink:https://datatracker.ietf.org/doc/html/rfc7033[WebFinger]とlink:https://datatracker.ietf.org/doc/html/rfc7565[`acct:` URI形式]という2つの標準で実装されています。Fedifyがこれを実装しているため、このチュートリアルを進める間は実装の詳細を知らなくても大丈夫です。
+====
+
+== アクターの実装
+
+ActivityPubは、その名前が示すように、アクティビティ（activity）を送受信するプロトコルです。投稿、投稿の編集、投稿の削除、投稿へのいいね、コメントの追加、プロフィールの編集…ソーシャルメディアで起こるすべての出来事をアクティビティとして表現します。
+
+そして、すべてのアクティビティはアクター（actor）からアクターへ送信されます。例えば、山田太郎が投稿を作成すると、「投稿作成」（`Create(Note)`）アクティビティが山田太郎から山田太郎のフォロワーたちに送信されます。その投稿に佐藤花子がいいねをすると、「いいね」（`Like`）アクティビティが佐藤花子から山田太郎に送信されます。
+
+したがって、ActivityPubを実装する最初のステップはアクターを実装することです。
+
+``fedify init``コマンドで生成されたデモアプリには既にとてもシンプルなアクターが実装されていますが、MastodonやMisskeyなどの実際のソフトウェアと通信するためには、アクターをもう少しきちんと実装する必要があります。
+
+まずは、現在の実装を一度見てみましょう。__src/federation.ts__ファイルを開いてみましょう：
+
+[source,typescript,highlight=12..18]
+----
+import { Person, createFederation } from "@fedify/fedify";
+import { InProcessMessageQueue, MemoryKvStore } from "@fedify/fedify";
+import { getLogger } from "@logtape/logtape";
+
+const logger = getLogger("microblog");
+
+const federation = createFederation({
+  kv: new MemoryKvStore(),
+  queue: new InProcessMessageQueue(),
+});
+
+federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+  return new Person({
+    id: ctx.getActorUri(identifier),
+    preferredUsername: identifier,
+    name: identifier,
+  });
+});
+
+export default federation;
+----
+
+注目すべき部分は``setActorDispatcher()``メソッドです。このメソッドは、他のActivityPubソフトウェアが我々が作成したサーバーのアクターを照会する際に使用するURLとその動作を定義します。例えば、先ほど我々が行ったように__/users/johndoe__を照会すると、コールバック関数の``identifier``パラメータに``"johndoe"``という文字列値が入ってきます。そして、コールバック関数は``Person``クラスのインスタンスを返して、照会されたアクターの情報を伝達します。
+
+``ctx``パラメータには``Context``オブジェクトが渡されますが、これはActivityPubプロトコルに関連する様々な機能を含むオブジェクトです。例えば、上記のコードで使用されている``getActorUri()``メソッドは、パラメータとして渡された``identifier``を含むアクターの一意なURIを返します。このURIは``Person``オブジェクトの一意な識別子として使用されています。
+
+実装コードを見ればわかるように、現在は__/users/__パスの後にどのようなハンドルが来ても、呼び出されたままのアクター情報を**作り出して**返しています。しかし、我々が望むのは実際に登録されているアカウントについてのみ照会できるようにすることです。この部分をデータベースに存在するアカウントについてのみ返すように修正しましょう。
+
+=== テーブルの作成
+
+``actors``テーブルを作成する必要があります。このテーブルは、現在のインスタンスサーバーのアカウントのみを含む``users``テーブルとは異なり、連合されるサーバーに属するリモートアクターも含みます。テーブルは次のようになります。__src/schema.sql__ファイルに次のSQLを追加してください：
+
+[source,sql]
+----
+CREATE TABLE IF NOT EXISTS actors (
+  id               INTEGER NOT NULL PRIMARY KEY,
+  user_id          INTEGER          REFERENCES users (id),
+  uri              TEXT    NOT NULL UNIQUE CHECK (uri <> ''),
+  handle           TEXT    NOT NULL UNIQUE CHECK (handle <> ''),
+  name             TEXT,
+  inbox_url        TEXT    NOT NULL UNIQUE CHECK (inbox_url LIKE 'https://%'
+                                                  OR inbox_url LIKE 'http://%'),
+  shared_inbox_url TEXT                    CHECK (shared_inbox_url
+                                                  LIKE 'https://%'
+                                                  OR shared_inbox_url
+                                                  LIKE 'http://%'),
+  url              TEXT                    CHECK (url LIKE 'https://%'
+                                                  OR url LIKE 'http://%'),
+  created          TEXT    NOT NULL DEFAULT (CURRENT_TIMESTAMP)
+                                           CHECK (created <> '')
+);
+----
+
+- ``user_id``カラムは``users``カラムと連携するための外部キーです。該当レコードがリモートアクターを表す場合は`NULL`が入りますが、現在のインスタンスサーバーのアカウントの場合は該当アカウントの`users.id`値が入ります。
+
+- ``uri``カラムはアクターIDと呼ばれるアクターの一意なURIを含みます。アクターを含むすべてのActivityPubオブジェクトはURI形式の一意なIDを持ちます。したがって、空にすることはできず、重複もできません。
+
+- ``handle``カラムは``+@johndoe@example.com+``形式のフェディバースハンドルを含みます。同様に、空にすることはできず、重複もできません。
+
+- ``name``カラムはUIに表示される名前を含みます。通常はフルネームやニックネームが入ります。ただし、ActivityPub仕様に従い、このカラムは空になる可能性があります。
+
+- ``inbox_url``カラムは該当アクターのインボックス（inbox）URLを含みます。インボックスが何であるかについては後で詳しく説明しますが、現時点ではアクターに必須で存在しなければならないということだけ覚えておいてください。このカラムも空にすることはできず、重複もできません。
+
+- ``shared_inbox_url``カラムは該当アクターの共有インボックス（shared inbox）URLを含みます。これについても後で詳しく説明します。必須ではないため、空になる可能性があり、カラム名の通り他のアクターと同じ共有インボックスURLを共有することもできます。
+
+- ``url``カラムは該当アクターのプロフィールURLを含みます。プロフィールURLとは、ウェブブラウザで開いて見ることができるプロフィールページのURLを意味します。アクターのIDとプロフィールURLが同じ場合もありますが、サービスによって異なる場合もあるため、その場合にこのカラムにプロフィールURLを含めます。空になる可能性があります。
+
+- ``created``カラムはレコードが作成された時点を記録します。空にすることはできず、デフォルトで挿入時点の時刻が記録されます。
+
+さて、これで__src/schema.sql__ファイルを__microblog.sqlite3__データベースファイルに適用しましょう：
+
+[source,console]
+$ sqlite3 microblog.sqlite3 < src/schema.sql
+
+TIP: 先ほど``users``テーブルを定義する際に``CREATE TABLE IF NOT EXISTS``文を使用したため、何度実行しても問題ありません。
+
+そして、``actors``テーブルに保存されるレコードをJavaScriptで表現する型も__src/schema.ts__に定義します：
+
+[source,typescript]
+export interface Actor {
+  id: number;
+  user_id: number | null;
+  uri: string;
+  handle: string;
+  name: string | null;
+  inbox_url: string;
+  shared_inbox_url: string | null;
+  url: string | null;
+  created: string;
+}
+
+=== アクターレコード
+
+現在``users``テーブルにレコードが1つありますが、これと対応するレコードが``actors``テーブルにはありません。アカウントを作成する際に``actors``テーブルにレコードを追加しなかったためです。アカウント作成コードを修正して``users``と``actors``の両方にレコードを追加するようにする必要があります。
+
+まず__src/views.tsx__にある``SetupForm``で、ユーザー名と一緒に``actors.name``カラムに入れる名前も入力を受け付けるようにしましょう：
+
+[source,tsx,highlight=16..18]
+export const SetupForm: FC = () => (
+  <>
+    <h1>Set up your microblog</h1>
+    <form method="post" action="/setup">
+      <fieldset>
+        <label>
+          Username{" "}
+          <input
+            type="text"
+            name="username"
+            required
+            maxlength={50}
+            pattern="^[a-z0-9_\-]+$"
+          />
+        </label>
+        <label>
+          Name <input type="text" name="name" required />
+        </label>
+      </fieldset>
+      <input type="submit" value="Setup" />
+    </form>
+  </>
+);
+
+先ほど定義した``Actor``型を__src/app.tsx__で``import``します：
+
+[source,typescript]
+import type { Actor, User } from "./schema.ts";
+
+これで入力された名前をはじめ、必要な情報を``actors``テーブルのレコードとして作成するコードを``POST /setup``ハンドラに追加します：
+
+[source,typescript,highlight=7,19..24,26,30..44]
+----
+app.post("/setup", async (c) => {
+  // アカウントが既に存在するか確認
+  const user = db
+    .prepare<unknown[], User>(
+      `
+      SELECT * FROM users
+      JOIN actors ON (users.id = actors.user_id)
+      LIMIT 1
+      `,
+    )
+    .get();
+  if (user != null) return c.redirect("/");
+
+  const form = await c.req.formData();
+  const username = form.get("username");
+  if (typeof username !== "string" || !username.match(/^[a-z0-9_-]{1,50}$/)) {
+    return c.redirect("/setup");
+  }
+  const name = form.get("name");
+  if (typeof name !== "string" || name.trim() === "") {
+    return c.redirect("/setup");
+  }
+  const url = new URL(c.req.url);
+  const handle = `@${username}@${url.host}`;
+  const ctx = fedi.createContext(c.req.raw, undefined);
+  db.transaction(() => {
+    db.prepare("INSERT OR REPLACE INTO users (id, username) VALUES (1, ?)").run(
+      username,
+    );
+    db.prepare(
+      `
+      INSERT OR REPLACE INTO actors
+        (user_id, uri, handle, name, inbox_url, shared_inbox_url, url)
+      VALUES (1, ?, ?, ?, ?, ?, ?)
+    `,
+    ).run(
+      ctx.getActorUri(username).href,
+      handle,
+      name,
+      ctx.getInboxUri(username).href,
+      ctx.getInboxUri().href,
+      ctx.getActorUri(username).href,
+    );
+  })();
+  return c.redirect("/");
+});
+----
+
+アカウントが既に存在するかチェックする際、``users``テーブルにレコードがない場合だけでなく、対応するレコードが``actors``テーブルにない場合もまだアカウントが存在しないと判断するように修正しました。同じ条件を``GET /setup``ハンドラおよび``GET /users/{username}``ハンドラにも適用します：
+
+[source,typescript,highlight=7]
+----
+app.get("/setup", (c) => {
+  // アカウントが既に存在するか確認
+  const user = db
+    .prepare<unknown[], User>(
+      `
+      SELECT * FROM users
+      JOIN actors ON (users.id = actors.user_id)
+      LIMIT 1
+      `,
+    )
+    .get();
+  if (user != null) return c.redirect("/");
+
+  return c.html(
+    <Layout>
+      <SetupForm />
+    </Layout>,
+  );
+});
+----
+
+[source,typescript,highlight=6]
+----
+app.get("/users/:username", async (c) => {
+  const user = db
+    .prepare<unknown[], User & Actor>(
+      `
+      SELECT * FROM users
+      JOIN actors ON (users.id = actors.user_id)
+      WHERE username = ?
+      `,
+    )
+    .get(c.req.param("username"));
+  if (user == null) return c.notFound();
+
+  const url = new URL(c.req.url);
+  const handle = `@${user.username}@${url.host}`;
+  return c.html(
+    <Layout>
+      <Profile name={user.name ?? user.username} handle={handle} />
+    </Layout>,
+  );
+});
+----
+
+TIP: TypeScriptでは``A & B``は``A``型と同時に``B``型であるオブジェクトを意味します。例えば、``{ a: number } & { b: string }``型があるとすると、``{ a: 123 }``や``{ b: "foo" }``はこの型を満たしませんが、``{ a: 123, b: "foo" }``はこの型を満たします。
+
+最後に、__src/federation.ts__ファイルを開き、アクターディスパッチャーの下に次のコードを追加します：
+
+[source,typescript]
+federation.setInboxListeners("/users/{handle}/inbox", "/inbox");
+
+``setInboxListeners()``メソッドは今のところ気にしないでください。これもまたインボックスについて説明する際に一緒に扱うことにします。ただ、アカウント作成コードで使用した``getInboxUri()``メソッドが正しく動作するためには上記のコードが必要だという点だけ指摘しておきます。
+
+コードをすべて修正したら、ブラウザで<http://localhost:8000/setup>ページを開いて再度アカウントを作成します：
+
+.アカウント作成ページ
+image::account-creation-page-2.png[アカウント作成ページ,align=center]
+
+=== アクターディスパッチャー
+
+``actors``テーブルを作成してレコードも追加したので、再び__src/federation.ts__ファイルを修正しましょう。まず``db``オブジェクトと``Endpoints``および``Actor``を``import``します：
+
+[source,typescript]
+import { Endpoints, Person, createFederation } from "@fedify/fedify";
+import db from "./db.ts";
+import type { Actor, User } from "./schema.ts";
+
+必要なものを``import``したので``setActorDispatcher()``メソッドを修正しましょう：
+
+[source,typescript,highlight=2..11,16..21]
+----
+federation.setActorDispatcher("/users/{handle}", async (ctx, handle) => {
+  const user = db
+    .prepare<unknown[], User & Actor>(
+      `
+      SELECT * FROM users
+      JOIN actors ON (users.id = actors.user_id)
+      WHERE users.username = ?
+      `,
+    )
+    .get(handle);
+  if (user == null) return null;
+
+  return new Person({
+    id: ctx.getActorUri(handle),
+    preferredUsername: handle,
+    name: user.name,
+    inbox: ctx.getInboxUri(handle),
+    endpoints: new Endpoints({
+      sharedInbox: ctx.getInboxUri(),
+    }),
+    url: ctx.getActorUri(handle),
+  });
+});
+----
+
+変更されたコードでは、データベースの``users``テーブルを照会して現在のサーバーにあるアカウントでない場合は``null``を返すようになりました。つまり、``GET /users/johndoe``（アカウント作成時にユーザー名を``johndoe``にしたと仮定した場合）リクエストに対しては正しい``Person``オブジェクトを``200 OK``とともに応答し、それ以外のリクエストに対しては``404 Not Found``を応答することになります。
+
+``Person``オブジェクトを生成する部分もどのように変わったか見てみましょう。まず``name``属性が追加されました。このプロパティは``actors.name``カラムの値を使用します。``inbox``と``endpoints``属性はインボックスについて説明するときに一緒に扱うことにします。``url``属性はこのアカウントのプロフィールURLを含みますが、このチュートリアルではアクターIDとアクターのプロフィールURLを一致させることにします。
+
+[TIP]
+====
+目のいい方々は気づいたかもしれませんが、HonoとFedify両方で``GET /users/{handle}``に対するハンドラを重複して定義しています。では、実際にそのリクエストを送信すると、どちらが応答することになるでしょうか？答えは、リクエストの``Accept``ヘッダーによって異なります。``Accept: text/html``ヘッダーと一緒にリクエストを送信すると、Hono側のリクエストハンドラが応答します。``Accept: application/activity+json``ヘッダーと一緒にリクエストを送信すると、Fedify側のリクエストハンドラが応答します。
+
+このようにリクエストの``Accept``ヘッダーに応じて異なる応答を返す方式をHTTPのlink:https://developer.mozilla.org/ja/docs/Web/HTTP/Content_negotiation[コンテンツネゴシエーション]（content negotiation）と呼び、Fedify自体がコンテンツネゴシエーションを実装しています。より具体的には、すべてのリクエストは一度Fedifyを通過し、ActivityPubに関連するリクエストでない場合は連携されたフレームワーク、このチュートリアルではHonoにリクエストを渡すようになっています。
+====
+
+TIP: FedifyではすべてのURIおよびURLをlink:https://developer.mozilla.org/ja/docs/Web/API/URL[`URL`]インスタンスで表現します。
+
+=== テスト
+
+それでは、アクターディスパッチャーをテストしてみましょう。
+
+サーバーが起動している状態で、新しいターミナルタブを開いて以下のコマンドを入力します：
+
+[source,console]
+$ fedify lookup http://localhost:8000/users/alice
+
+``alice``というアカウントが存在しないため、先ほどとは異なり、今度は次のようなエラーが発生するはずです：
+
+[listing]
+✔ Looking up the object...
+Failed to fetch the object.
+It may be a private object.  Try with -a/--authorized-fetch.
+
+では``johndoe``アカウントも照会してみましょう：
+
+[source,console]
+fedify lookup http://localhost:8000/users/johndoe
+
+今度は結果がきちんと出力されます：
+
+[listing]
+✔ Looking up the object...
+Person {
+  id: URL "http://localhost:8000/users/johndoe",
+  name: "John Doe",
+  url: URL "http://localhost:8000/users/johndoe",
+  preferredUsername: "johndoe",
+  inbox: URL "http://localhost:8000/users/johndoe/inbox",
+  endpoints: Endpoints { sharedInbox: URL "http://localhost:8000/inbox" }
+}
