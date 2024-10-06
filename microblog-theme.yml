@@ -17,6 +17,11 @@ font:
 page:
   size: A5
   margin: 30
+  numbering:
+    start-at: toc
+footer:
+  font-family: Noto Sans JP
+  font-size: 7
 base:
   text-align: left
   font-family: Noto Serif JP
@@ -47,6 +52,11 @@ button:
   font-family: Noto Sans JP
   font-color: "#000000"
   content: "%s"
+caption:
+  align: center
+  font-family: Noto Sans JP
+  font-color: "#000000"
+  font-size: 8
 menu:
   font-family: Noto Sans JP
   font-color: "#000000"
