@@ -3,5 +3,6 @@
     "lang": "ja"
   },
   "cSpell.enabled": false,
-  "editor.indentSize": 2
+  "editor.indentSize": 2,
+  "yaml.format.enable": false
 }

@@ -3220,4 +3220,4 @@ UPDATE actors SET name = 'Renamed' WHERE id = 1;
 
 本書はAsciiDocで組版されており、以下のGitHubリポジトリからソースコードを入手できます：
 
-<https://github.com/dahlia/fedify-microblog-ja>
+<https://github.com/dahlia/fedify-microblog-tutorial-ja>

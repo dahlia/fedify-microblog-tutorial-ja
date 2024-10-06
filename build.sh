@@ -36,6 +36,8 @@ if [[ ! -f NotoSansSymbols2-Regular.ttf ]]; then
 fi
 popd
 
+mkdir -p "$(dirname "$0")/dist"
+
 "$DOCKER" run \
   --interactive \
   --tty \
@@ -45,7 +47,9 @@ popd
   --attribute notitle \
   --attribute text-align=left \
   --attribute source-highlighter=rouge \
-  --attribute pdf-fontsdir="$(dirname "$0")/fonts" \
+  --attribute pdf-fontsdir="/documents/fonts" \
   --theme ./microblog-theme.yml \
   --trace \
+  --destination-dir /documents/dist \
+  --out-file fedify-microblog-tutorial-ja.pdf \
   README.adoc
