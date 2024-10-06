@@ -1938,4 +1938,8 @@ image::remote-profile-2.png[Mastodonで再度照会した我々が作成した�
 
 === ライセンス
 
-この作業はlink:https://creativecommons.org/licenses/by-sa/4.0/deed.ja[クリエイティブ・コモンズ表示-継承4.0国際ライセンス]の下に提供されています。
+本書はlink:https://creativecommons.org/licenses/by-sa/4.0/deed.ja[クリエイティブ・コモンズ表示-継承4.0国際ライセンス]の下に提供されています。
+
+本書はAsciiDocで組版されており、以下のGitHubリポジトリからソースコードを入手できます：
+
+<https://github.com/dahlia/fedify-microblog-ja>
