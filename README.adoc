@@ -1,5 +1,6 @@
 = 自分だけのフェディバースのマイクロブログを作ろう！
-洪 民憙（ホン・ミンヒ）
+:author: 洪 民憙（ホン・ミンヒ）
+:email: hong@minhee.org
 :doctype: book
 :lang: ja
 :scripts: cjk
@@ -3204,11 +3205,12 @@ UPDATE actors SET name = 'Renamed' WHERE id = 1;
 
 == 著者とライセンス
 
-=== 著者：洪 民憙（ホン・ミンヒ）
+=== 著者：{author}
 
 1988年ソウル生まれ。2000年からウェブ開発を始め、主にPython、Haskell、C#、TypeScript等の言語を使用。オープンソースとフェディバースの熱烈な支持者であり、ActivityPubサーバーフレームワークであるFedifyと、Fedifyベースの一人用ActivityPub実装であるHolloを開発。
 
 - ウェブサイト：<https://hongminhee.org/>
+- メールアドレス：{email}
 - フェディバース（日本語）：link:https://fedibird.com/@hongminhee[+@hongminhee@fedibird.com+]
 - フェディバース（英語）：link:https://fosstodon.org/@hongminhee[+@hongminhee@fosstodon.org+]
 
