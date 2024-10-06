@@ -9,6 +9,8 @@ font:
     Noto Sans Mono JP: NotoSansMonoCJKjp-VF.ttf
     Noto Sans Symbols 2: NotoSansSymbols2-Regular.ttf
   fallbacks: [Noto Sans Symbols 2, Noto Serif]
+page:
+  size: A5
 base:
   text-align: left
   font-family: Noto Serif JP
