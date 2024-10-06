@@ -2302,12 +2302,12 @@ image::search-results-2.png[空の検索結果]
 [source,console]
 $ npm add @js-temporal/polyfill
 
-__src/federation.ts__ファイルを開き、インストールしたパッケージをインポートします：
+__src/federation.ts__ファイルを開き、インストールしたパッケージを``import``します：
 
 [source,typescript]
 import { Temporal } from "@js-temporal/polyfill";
 
-``Post``タイプとFedifyが提供する``PUBLIC_COLLECTION``定数もインポートします。
+``Post``タイプとFedifyが提供する``PUBLIC_COLLECTION``定数も``import``します。
 
 [source,typescript,highlight=6,19]
 ----
@@ -2499,7 +2499,7 @@ export const PostList: FC<PostListProps> = ({ posts }) => (
 );
 ----
 
-そして__src/app.tsx__ファイルを開き、先ほど定義した``<PostList>``コンポーネントをインポートします：
+そして__src/app.tsx__ファイルを開き、先ほど定義した``<PostList>``コンポーネントを``import``します：
 
 [source,typescript,highlight=5]
 ----
@@ -2547,6 +2547,273 @@ app.get("/users/:username", async (c) => {
 image::profile-page-4.png[変更されたプロフィールページ]
 
 作成した投稿がきちんと表示されているのが確認できます。
+
+== フォロー
+
+現在、我々が作成したアクターは他のサーバーのアクターからフォローリクエストを受け取ることはできますが、他のサーバーのアクターにフォローリクエストを送ることはできません。フォローができないため、他のアクターが作成した投稿も見ることができません。では、他のサーバーのアクターにフォローリクエストを送る機能を追加しましょう。
+
+まずUIから作りましょう。__src/views.tsx__ファイルを開き、既存の``<Home>``コンポーネントを次のように修正します：
+
+[source,tsx,highlight=6..17]
+----
+export const Home: FC<HomeProps> = ({ user }) => (
+  <>
+    <hgroup>
+      {/* ... 省略 ... */}
+    </hgroup>
+    <form method="post" action={`/users/${user.username}/following`}>
+      {/* biome-ignore lint/a11y/noRedundantRoles: PicoCSSがrole=groupを要求します */}
+      <fieldset role="group">
+        <input
+          type="text"
+          name="actor"
+          required={true}
+          placeholder="Enter an actor handle (e.g., @johndoe@mastodon.com) or URI (e.g., https://mastodon.com/@johndoe)"
+        />
+        <input type="submit" value="Follow" />
+      </fieldset>
+    </form>
+    <form method="post" action={`/users/${user.username}/posts`}>
+      {/* ... 省略 ... */}
+    </form>
+  </>
+);
+----
+
+トップページが正しく修正されたか確認するために、ウェブブラウザで<http://localhost:8000/>ページを開いてみましょう：
+
+.フォローリクエストUIが追加されたトップページ
+image::home-3.png[フォローリクエストUIが追加されたトップページ]
+
+=== ``Follow``アクティビティの送信
+
+フォローリクエストUIができたので、実際に``Follow``アクティビティを送信するコードを書きましょう。
+
+__src/app.tsx__ファイルを開き、Fedifyが提供する``Follow``クラスと``isActor()``および``lookupObject()``関数を``import``します：
+
+[source,typescript,highlight=3..5]
+----
+import {
+  Create,
+  Follow,
+  isActor,
+  lookupObject,
+  Note,
+} from "@fedify/fedify";
+----
+
+そして``POST /users/{username}/following``リクエストハンドラを追加します：
+
+[source,typescript]
+----
+app.post("/users/:username/following", async (c) => {
+  const username = c.req.param("username");
+  const form = await c.req.formData();
+  const handle = form.get("actor");
+  if (typeof handle !== "string") {
+    return c.text("Invalid actor handle or URL", 400);
+  }
+  const actor = await lookupObject(handle.trim());  // <1>
+  if (!isActor(actor)) {                            // <2>
+    return c.text("Invalid actor handle or URL", 400);
+  }
+  const ctx = fedi.createContext(c.req.raw, undefined);
+  await ctx.sendActivity(                           // <3>
+    { handle: username },
+    actor,
+    new Follow({
+      actor: ctx.getActorUri(username),
+      object: actor.id,
+      to: actor.id,
+    }),
+  );
+  return c.text("Successfully sent a follow request");
+});
+----
+<1> ``lookupObject()``関数は、アクターを含むActivityPubオブジェクトを検索します。入力としてActivityPubオブジェクトの一意のURIまたはフェディバースハンドルを受け取り、検索したActivityPubオブジェクトを返します。
+<2> ``isActor()``関数は、与えられたActivityPubオブジェクトがアクターかどうかを確認します。
+<3> このコードでは``sendActivity()``メソッドを使用して、検索したアクターに``Follow``アクティビティを送信しています。しかし、まだ``follows``テーブルにレコードは追加していません。これは、相手から``Accept(Follow)``アクティビティを受け取ってからレコードを追加する必要があるためです。
+
+=== テスト
+
+実装したフォローリクエスト機能が正しく動作するか確認する必要があります。今回もアクティビティを送信する必要があるため、``fedify tunnel``コマンドを使用してローカルサーバーをパブリックインターネットに公開した後、ウェブブラウザで<https://temp-address.serveo.net/>（ドメイン名は置き換えてください）ページにアクセスします：
+
+.フォローリクエストUIがあるトップページ
+image::home-3.png[フォローリクエストUIがあるトップページ]
+
+フォローリクエスト入力欄にフォローするアクターのフェディバースハンドルを入力する必要があります。ここでは簡単なデバッグのためにlink:https://activitypub.academy/[ActivityPub.Academy]のアクターを入力しましょう。参考までに、ActivityPub.Academyにログインした一時アカウントのハンドルは、一時アカウントの名前をクリックしてプロフィールページに入ると、名前のすぐ下に表示されます：
+
+.ActivityPub.Academyのアカウントプロフィールページに表示されているフェディバースハンドル
+image::academy-profile.png[ActivityPub.Academyのアカウントプロフィールページに表示されているフェディバースハンドル]
+
+以下のようにActivityPub.Academyのアクターハンドルを入力した後、btn:[Follow]ボタンをクリックしてフォローリクエストを送信します：
+
+.ActivityPub.Academyのアクターにフォローリクエストを送信中
+image::home-5.png[ActivityPub.Academyのアクターにフォローリクエストを送信中]
+
+そしてActivityPub.AcademyのActivity Logを確認します：
+
+.ActivityPub.AcademyのActivity Log
+image::activity-log-6.png[ActivityPub.AcademyのActivity Log]
+
+Activity Logには我々が送信した``Follow``アクティビティと、ActivityPub.Academyから送信された返信である``Accept(Follow)``アクティビティが表示されます。
+
+ActivityPub.Academyの通知ページに行くと、実際にフォローリクエストが到着したことを確認できます：
+
+.ActivityPub.Academyの通知ページに表示された到着したフォローリクエスト
+image::academy-notifications.png[ActivityPub.Academyの通知ページに表示された到着したフォローリクエスト]
+
+=== ``Accept(Follow)``アクティビティの受信
+
+しかし、まだ受信した``Accept(Follow)``アクティビティに対して何の動作も取っていないため、この部分を実装する必要があります。
+
+__src/federation.ts__ファイルを開き、Fedifyが提供する``isActor()``関数および``Actor``型を``import``します：
+
+[source,typescript,highlight=14..15]
+----
+import {
+  Accept,
+  Endpoints,
+  Follow,
+  Note,
+  PUBLIC_COLLECTION,
+  Person,
+  Undo,
+  createFederation,
+  exportJwk,
+  generateCryptoKeyPair,
+  getActorHandle,
+  importJwk,
+  isActor,
+  type Actor as APActor,  // <1>
+  type Recipient,
+} from "@fedify/fedify";
+----
+<1> このソースファイル内で``Actor``型の名前が重複するため、``APActor``というエイリアスを付けました。
+
+実装に先立ち、初めて遭遇したアクター情報を``actors``テーブルに挿入するコードをリファクタリングして再利用可能にしましょう。以下の関数を追加します：
+
+[source,typescript]
+----
+async function persistActor(actor: APActor): Promise<Actor | null> {
+  if (actor.id == null || actor.inboxId == null) {
+    logger.debug("Actor is missing required fields: {actor}", { actor });
+    return null;
+  }
+  return (
+    db
+      .prepare<unknown[], Actor>(
+        `
+        -- アクターレコードを新規追加するか、既に存在する場合は更新
+        INSERT INTO actors (uri, handle, name, inbox_url, shared_inbox_url, url)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT (uri) DO UPDATE SET
+          handle = excluded.handle,
+          name = excluded.name,
+          inbox_url = excluded.inbox_url,
+          shared_inbox_url = excluded.shared_inbox_url,
+          url = excluded.url
+        WHERE
+          actors.uri = excluded.uri
+        RETURNING *
+        `,
+      )
+      .get(
+        actor.id.href,
+        await getActorHandle(actor),
+        actor.name?.toString(),
+        actor.inboxId.href,
+        actor.endpoints?.sharedInbox?.href,
+        actor.url?.href,
+      ) ?? null
+  );
+}
+----
+
+定義した``persistActor()``関数は、引数として渡されたアクターオブジェクトに対応するレコードを``actors``テーブルに追加します。既にテーブルに対応するレコードが存在する場合は、レコードを更新します。
+
+受信トレイの``on(Follow, ...)``部分で同じ役割を果たすコードを``persistActor()``関数を使用するように変更します：
+
+[source,typescript,highlight=11]
+----
+federation
+  .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  .on(Follow, async (ctx, follow) => {
+    // ... 省略 ...
+    if (followingId == null) {
+      logger.debug(
+        "Failed to find the actor to follow in the database: {object}",
+        { object },
+      );
+    }
+    const followerId = (await persistActor(follower))?.id;
+    db.prepare(
+      "INSERT INTO follows (following_id, follower_id) VALUES (?, ?)",
+    ).run(followingId, followerId);
+    // ... 省略 ...
+  })
+----
+
+リファクタリングが終わったら、受信トレイに``Accept(Follow)``アクティビティを受け取ったときに取るべき動作を実装します：
+
+[source,typescript]
+----
+  .on(Accept, async (ctx, accept) => {
+    const follow = await accept.getObject();
+    if (!(follow instanceof Follow)) return;
+    const following = await accept.getActor();
+    if (!isActor(following)) return;
+    const follower = follow.actorId;
+    if (follower == null) return;
+    const parsed = ctx.parseUri(follower);
+    if (parsed == null || parsed.type !== "actor") return;
+    const followingId = (await persistActor(following))?.id;
+    if (followingId == null) return;
+    db.prepare(
+      `
+      INSERT INTO follows (following_id, follower_id)
+      VALUES (
+        ?,
+        (
+          SELECT actors.id
+          FROM actors
+          JOIN users ON actors.user_id = users.id
+          WHERE users.username = ?
+        )
+      )
+      `,
+    ).run(followingId, parsed.identifier);
+  });
+----
+
+妥当性を検査するコードが長いですが、要約すると``Accept(Follow)``アクティビティの内容からフォローリクエストを送信したアクター（``follower``）とフォローリクエストを受け取ったアクター（``following``）を取得し、``follows``テーブルにレコードを追加するものです。
+
+=== テスト
+
+これで正しく動作するか確認する必要がありますが、問題があります。先ほどフォローリクエストを送信したとき、file:https://activitypub.academy/[ActivityPub.Academy]側ではフォローリクエストを承認し、``Accept(Follow)``アクティビティを既に送信しているため、この状態でもう一度フォローリクエストを送信しても無視されてしまいます。したがって、ActivityPub.Academyからログアウトした後、再度一時アカウントを作成してテストする必要があります。
+
+ActivityPub.Academyで新しい一時アカウントを作成したら、``fedify tunnel``コマンドでローカルサーバーをパブリックインターネットに公開した状態で、ウェブブラウザで<https://temp-address.serveo.net/>（ドメイン名は置き換えてください）ページにアクセスし、ActivityPub.Academyの新しい一時アカウントにフォローリクエストを送信します。
+
+フォローリクエストが正しく送信されたら、先ほどと同様にActivity Logに``Follow``アクティビティが到着した後、返信として``Accept(Follow)``アクティビティが発信されたのが確認できるはずです：
+
+.受信された``Follow``アクティビティと発信された``Accept(Follow)``アクティビティが表示されているActivity Log
+image::activity-log-7.png[受信されたFollowアクティビティと発信されたAccept(Follow)アクティビティが表示されているActivity Log]
+
+まだフォローリストを実装していないため、``follows``テーブルにレコードが正しく挿入されたか直接確認してみましょう：
+
+[source,console]
+$ echo "SELECT * FROM follows WHERE follower_id = 1;" | sqlite3 -table microblog.sqlite3
+
+成功していれば、以下のような結果が得られるはずです（``following_id``列の値は多少異なる可能性があります）：
+
+[cols="1,1,1"]
+|===
+| `following_id` | `follower_id` | `created`
+
+| `3`
+| `1`
+| `2024-09-02 14:11:17`
+|===
 
 == 著者とライセンス
 
