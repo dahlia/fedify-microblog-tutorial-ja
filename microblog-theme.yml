@@ -1,0 +1,4 @@
+extends: default-with-font-fallbacks
+cover:
+  front:
+    image: image::images/cover.svg[fit=fill]

@@ -1,8 +1,11 @@
 = 自分だけのフェディバースのマイクロブログを作ろう！
+洪 民憙（ホン・ミンヒ）
 :doctype: book
 :lang: ja
+:scripts: cjk
 :experimental:
 :toc:
+:toc-title: 目次
 :imagesdir: ./images
 
 == 序文
@@ -12,7 +15,7 @@ NOTE: もしlink:https://ja.wikipedia.org/wiki/Fediverse[フェディバース]�
 このチュートリアルでは、ActivityPubサーバーフレームワークであるlink:https://fedify.dev/[Fedify]を使用して、link:https://joinmastodon.org/ja[Mastodon]やlink:https://misskey-hub.net/ja/[Misskey]のようなActivityPubプロトコルを実装するlink:https://ja.wikipedia.org/wiki/%E3%83%9F%E3%83%8B%E3%83%96%E3%83%AD%E3%82%B0[マイクロブログ]（microblog）を作成します。このチュートリアルは、Fedifyの基本的な動作原理を理解するよりも、Fedifyの活用方法により焦点を当てています。
 
 .Fedifyのロゴ
-image::logo.png[Fedifyのロゴ,align=center]
+image::logo.svg[Fedifyのロゴ,width=100%,align=center]
 
 Fedifyは、ActivityPubやその他の標準規格（総称して「フェディバース」と呼ばれる）を利用した連合サーバーアプリを作る為のTypeScriptライブラリです。連合サーバーアプリを作る際の複雑さやボイラプレートコードを排除し、ビジネスロジックやユーザーエクスペリエンスに集中できる様にすることを目的としています。
 
@@ -71,7 +74,7 @@ TIP: JavaScriptランタイムとは、JavaScriptコードを実行するプラ�
 
 Fedifyを使用するにはNode.js 20.0.0以上のバージョンが必要です。link:https://nodejs.org/ja/download/package-manager[様々なインストール方法]がありますので、自分に最適な方法でNode.jsをインストールしてください。
 
-Node.jsがインストールされると、`node`コマンドと`npm`コマンドが使えるようになります：
+Node.jsがインストールされると、``node``コマンドと``npm``コマンドが使えるようになります：
 
 [source,console]
 ----
@@ -235,7 +238,7 @@ TypeScriptはJavaScriptに静的型チェックを追加したものです。Typ
 [source,typescript]
 let foo: string;
 
-上記のように宣言された`foo`変数に文字列以外の型の値を代入しようとすると、Visual Studio Codeが**実行する前に**赤い下線を引いて型エラーを表示します：
+上記のように宣言された``foo``変数に文字列以外の型の値を代入しようとすると、Visual Studio Codeが**実行する前に**赤い下線を引いて型エラーを表示します：
 
 [source,typescript]
 ----
@@ -312,7 +315,7 @@ const html = <Container name={getName()}>
 </Container>;
 ----
 
-上記のコードで``FC``は、我々が使用するウェブフレームワークであるlink:https://hono.dev/[Hono]が提供するもので、コンポーネントの型を定義するのに役立ちます。``FC``はlink:https://www.typescriptlang.org/docs/handbook/2/generics.html[ジェネリック型]（generic type）で、``FC<ContainerProps>``のように山括弧内に入る型が型引数です。ここでは型引数としてプロップ（props）の形式を指定しています。プロップとは、コンポーネントに渡すパラメータのことを指します。上記のコードでは、``<Container>``コンポーネントのプロップ形式として`ContainerProps`インターフェースを宣言して使用しています。
+上記のコードで``FC``は、我々が使用するウェブフレームワークであるlink:https://hono.dev/[Hono]が提供するもので、コンポーネントの型を定義するのに役立ちます。``FC``はlink:https://www.typescriptlang.org/docs/handbook/2/generics.html[ジェネリック型]（generic type）で、``FC<ContainerProps>``のように山括弧内に入る型が型引数です。ここでは型引数としてプロップ（props）の形式を指定しています。プロップとは、コンポーネントに渡すパラメータのことを指します。上記のコードでは、``<Container>``コンポーネントのプロップ形式として``ContainerProps``インターフェースを宣言して使用しています。
 
 [NOTE]
 ====
@@ -322,7 +325,7 @@ const html = <Container name={getName()}>
 
 型引数が1つの場合、型引数を囲む山括弧がXML/HTMLタグのように見えますが、JSXの機能とは無関係です。
 
-- `FC<ContainerProps>`：ジェネリック型`FC`に型引数``ContainerProps``を適用したもの。
+- `FC<ContainerProps>`：ジェネリック型``FC``に型引数``ContainerProps``を適用したもの。
 - `<Container>`：``<Container>``という名前のコンポーネントタグを開いたもの。``</Container>``で閉じる必要があります。
 ====
 
@@ -432,7 +435,7 @@ CREATE TABLE IF NOT EXISTS users (
 );
 ----
 
-我々が作成するマイクロブログは1つのアカウントしか作成できないので、主キーである`id`カラムが``1``以外の値を許可しないように制約をかけました。これにより、``users``テーブルには2つ以上のレコードを格納できなくなります。また、アカウントIDを格納する``username``カラムが空の文字列や長すぎる文字列を許可しないように制約を設けました。
+我々が作成するマイクロブログは1つのアカウントしか作成できないので、主キーである``id``カラムが``1``以外の値を許可しないように制約をかけました。これにより、``users``テーブルには2つ以上のレコードを格納できなくなります。また、アカウントIDを格納する``username``カラムが空の文字列や長すぎる文字列を許可しないように制約を設けました。
 
 では、``users``テーブルを作成するために__src/schema.sql__ファイルを実行する必要があります。そのためには``sqlite3``コマンドが必要ですが、link:https://www.sqlite.org/download.html[SQLiteのウェブサイトからダウンロードするか]、各プラットフォームのパッケージマネージャーでインストールできます。macOSの場合は、オペレーティングシステムに組み込まれているので、別途ダウンロードする必要はありません。直接ダウンロードする場合は、オペレーティングシステムに合った__sqlite-tools-*.zip__ファイルをダウンロードして解凍してください。パッケージマネージャーを使用する場合は、次のコマンドでインストールすることもできます：
 
@@ -691,7 +694,7 @@ CREATE TABLE IF NOT EXISTS actors (
 );
 ----
 
-- ``user_id``カラムは``users``カラムと連携するための外部キーです。該当レコードがリモートアクターを表す場合は`NULL`が入りますが、現在のインスタンスサーバーのアカウントの場合は該当アカウントの`users.id`値が入ります。
+- ``user_id``カラムは``users``カラムと連携するための外部キーです。該当レコードがリモートアクターを表す場合は``NULL``が入りますが、現在のインスタンスサーバーのアカウントの場合は該当アカウントの``users.id``値が入ります。
 
 - ``uri``カラムはアクターIDと呼ばれるアクターの一意なURIを含みます。アクターを含むすべてのActivityPubオブジェクトはURI形式の一意なIDを持ちます。したがって、空にすることはできず、重複もできません。
 
@@ -819,7 +822,7 @@ app.post("/setup", async (c) => {
 
 アカウントが既に存在するかチェックする際、``users``テーブルにレコードがない場合だけでなく、対応するレコードが``actors``テーブルにない場合もまだアカウントが存在しないと判断するように修正しました。同じ条件を``GET /setup``ハンドラおよび``GET /users/{username}``ハンドラにも適用します：
 
-[source,typescript,highlight=7]
+[source,tsx,highlight=7]
 ----
 app.get("/setup", (c) => {
   // アカウントが既に存在するか確認
@@ -842,7 +845,7 @@ app.get("/setup", (c) => {
 });
 ----
 
-[source,typescript,highlight=6]
+[source,tsx,highlight=6]
 ----
 app.get("/users/:username", async (c) => {
   const user = db
