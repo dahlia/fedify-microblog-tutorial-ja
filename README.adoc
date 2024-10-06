@@ -1477,6 +1477,128 @@ image::activity-log-3.png[Activity Logに表示されたAccept(Follow)アクテ�
 
 さて、これで皆さんは初めてActivityPubを通じた相互作用を実装しました！
 
+== フォロー解除
+
+他のサーバーのアクターが我々が作成したアクターをフォローした後、再び解除するとどうなるでしょうか？link:https://activitypub.academy/[ActivityPub.Academy]で試してみましょう。先ほどと同様に、ActivityPub.Academyの検索ボックスに我々が作成したアクターのフェディバースハンドルを入力して検索します：
+
+.ActivityPub.Academyの検索結果
+image::academy-search-results-2.png[ActivityPub.Academyの検索結果]
+
+よく見ると、アクター名の右側にあったフォローボタンの場所にフォロー解除（unfollow）ボタンがあります。このボタンを押してフォローを解除した後、Activity Logに入ってどのようなアクティビティが送信されるか確認してみましょう：
+
+.送信された``Undo(Follow)``アクティビティが表示されているActivity Log
+image::activity-log-4.png[送信されたUndo(Follow)アクティビティが表示されているActivity Log]
+
+上のように``Undo(Follow)``アクティビティが送信されました。右下のbtn:[show source]を押すとアクティビティの詳細な内容を見ることができます：
+
+[source,json]
+----
+{
+  "@context": "https://www.w3.org/ns/activitystreams",
+  "id": "https://activitypub.academy/users/dobussia_dovornath#follows/3283/undo",
+  "type": "Undo",
+  "actor": "https://activitypub.academy/users/dobussia_dovornath",
+  "object": {
+    "id": "https://activitypub.academy/98b131b8-89ea-49ba-b2bd-3ee0f5a87694",
+    "type": "Follow",
+    "actor": "https://activitypub.academy/users/dobussia_dovornath",
+    "object": "https://temp-address.serveo.net/users/johndoe"
+  }
+}
+----
+
+上のJSONオブジェクトを見ると、``Undo(Follow)``アクティビティの中に先ほどインボックスに入ってきた``Follow``アクティビティが含まれていることがわかります。しかし、インボックスで``Undo(Follow)``アクティビティを受信した時の動作を何も定義していないため、何も起こりませんでした。
+
+=== ``Undo(Follow)``アクティビティの受信
+
+フォロー解除を実装するために__src/federation.ts__ファイルを開き、Fedifyが提供する``Undo``クラスを``import``します：
+
+[source,typescript,highlight=6]
+----
+import {
+  Accept,
+  Endpoints,
+  Follow,
+  Person,
+  Undo,
+  createFederation,
+  exportJwk,
+  generateCryptoKeyPair,
+  getActorHandle,
+  importJwk,
+} from "@fedify/fedify";
+----
+
+そして``on(Follow, ...)``の後に続けて``on(Undo, ...)``を追加します：
+
+[source,typescript,highlight=6..23]
+----
+federation
+  .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  .on(Follow, async (ctx, follow) => {
+    // ... 省略 ...
+  })
+  .on(Undo, async (ctx, undo) => {
+    const object = await undo.getObject();
+    if (!(object instanceof Follow)) return;
+    if (undo.actorId == null || object.objectId == null) return;
+    const parsed = ctx.parseUri(object.objectId);
+    if (parsed == null || parsed.type !== "actor") return;
+    db.prepare(
+      `
+      DELETE FROM follows
+      WHERE following_id = (
+        SELECT actors.id
+        FROM actors
+        JOIN users ON actors.user_id = users.id
+        WHERE users.username = ?
+      ) AND follower_id = (SELECT id FROM actors WHERE uri = ?)
+      `,
+    ).run(parsed.identifier, undo.actorId.href);
+  });
+----
+
+今回はフォローリクエストを処理する時よりもコードが短くなっています。``Undo(Follow)``アクティビティの中に入っているのが``Follow``アクティビティかどうか確認した後、``parseUri()``メソッドを使って取り消そうとしている``Follow``アクティビティのフォロー対象が我々が作成したアクターかどうか確認し、``follows``テーブルから該当するレコードを削除します。
+
+=== テスト
+
+先ほどlink:https://activitypub.academy/[ActivityPub.Academy]でフォロー解除ボタンを押してしまったので、もう一度フォロー解除をすることはできません。仕方がないので再度フォローした後、フォロー解除してテストする必要があります。しかしその前に、``follows``テーブルを空にする必要があります。そうしないと、フォローリクエストが来た時に既にレコードが存在するためエラーが発生してしまいます。
+
+``sqlite3``コマンドを使用して``follows``テーブルを空にしましょう：
+
+[source,console]
+$ echo "DELETE FROM follows;" | sqlite3 microblog.sqlite3
+
+そして再度フォローボタンを押した後、データベースを確認します：
+
+[source,console]
+$ echo "SELECT * FROM follows;" | sqlite3 -table microblog.sqlite3
+
+フォローリクエストがきちんと処理されていれば、次のような結果が出力されるはずです：
+
+[cols="1,1,1"]
+|===
+| `following_id` | `follower_id` | `created`
+
+| `1`
+| `2`
+| `2024-09-02 01:05:17`
+|===
+
+そして再度フォロー解除ボタンを押した後、データベースをもう一度確認します：
+
+[source,console]
+$ echo "SELECT count(*) FROM follows;" | sqlite3 -table microblog.sqlite3
+
+フォロー解除リクエストがきちんと処理されていれば、レコードが消えているので次のような結果が出力されるはずです：
+
+[cols="1"]
+|===
+| `count(*)`
+
+| `0`
+|===
+
 == 著者とライセンス
 
 === 著者：洪 民憙（ホン・ミンヒ）
