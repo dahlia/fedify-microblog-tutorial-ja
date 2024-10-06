@@ -2476,6 +2476,78 @@ image::academy-timeline.png[ActivityPub.Academyのタイムラインに作成し
 
 成功しました！
 
+== プロフィールページ内の投稿リスト
+
+現在のプロフィールページには名前とフェディバースハンドル、フォロワー数のみが表示され、肝心の投稿は表示されていません。プロフィールページで作成した投稿を表示しましょう。
+
+まず__src/views.tsx__ファイルを開き、``<PostList>``コンポーネントを追加します：
+
+[source,tsx]
+----
+export interface PostListProps {
+  posts: (Post & Actor)[];
+}
+
+export const PostList: FC<PostListProps> = ({ posts }) => (
+  <>
+    {posts.map((post) => (
+      <div key={post.id}>
+        <PostView post={post} />
+      </div>
+    ))}
+  </>
+);
+----
+
+そして__src/app.tsx__ファイルを開き、先ほど定義した``<PostList>``コンポーネントをインポートします：
+
+[source,typescript,highlight=5]
+----
+import {
+  FollowerList,
+  Home,
+  Layout,
+  PostList,
+  PostPage,
+  Profile,
+  SetupForm,
+} from "./views.tsx";
+----
+
+既存の``GET /users/{username}``リクエストハンドラを次のように変更します：
+
+[source,tsx]
+----
+app.get("/users/:username", async (c) => {
+  // ... 省略 ...
+  const posts = db
+    .prepare<unknown[], Post & Actor>(
+      `
+      SELECT actors.*, posts.*
+      FROM posts
+      JOIN actors ON posts.actor_id = actors.id
+      WHERE actors.user_id = ?
+      ORDER BY posts.created DESC
+      `,
+    )
+    .all(user.user_id);
+  // ... 省略 ...
+  return c.html(
+    <Layout>
+      // ... 省略 ...
+      <PostList posts={posts} />
+    </Layout>,
+  );
+});
+----
+
+それでは、ウェブブラウザで<http://localhost:8000/users/johndoe>ページを開いてみましょう：
+
+.変更されたプロフィールページ
+image::profile-page-4.png[変更されたプロフィールページ]
+
+作成した投稿がきちんと表示されているのが確認できます。
+
 == 著者とライセンス
 
 === 著者：洪 民憙（ホン・ミンヒ）
