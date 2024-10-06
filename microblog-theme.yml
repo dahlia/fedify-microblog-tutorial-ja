@@ -2,3 +2,19 @@ extends: default-with-font-fallbacks
 cover:
   front:
     image: image::images/cover.svg[fit=fill]
+font:
+  catalog:
+    merge: true
+    Noto Serif JP: NotoSerifCJKjp-VF.ttf
+    Noto Sans Mono JP: NotoSansMonoCJKjp-VF.ttf
+    Noto Sans Symbols 2: NotoSansSymbols2-Regular.ttf
+  fallbacks: [Noto Sans Symbols 2, Noto Serif]
+base:
+  text-align: left
+  font-family: Noto Serif JP
+codespan:
+  font-family: Noto Sans Mono JP
+code:
+  font-family: $codespan-font-family
+kbd:
+  font-family: $codespan-font-family
