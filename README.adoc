@@ -4,9 +4,15 @@
 :lang: ja
 :scripts: cjk
 :experimental:
+:imagesdir: ./images
 :toc:
 :toc-title: 目次
-:imagesdir: ./images
+:figure-caption: 図
+:tip-caption: ヒント
+:note-caption: 注釈
+:important-caption: 重要
+:caution-caption: 注意
+:warning-caption: 警告
 
 == 序文
 
