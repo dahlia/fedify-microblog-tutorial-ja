@@ -17,39 +17,39 @@
 
 == 序文
 
-NOTE: もしlink:https://ja.wikipedia.org/wiki/Fediverse[フェディバース]（fediverse）footnote:[Mastodon、Misskey、Lemmy、Pixelfed、PeerTubeなど、フェディバースのネットワークのいくつかはすでにご存知かもしれない。]やlink:https://activitypub.rocks/[ActivityPub]といった用語に馴染みがない場合は、関連する検索をもう少し行ってからこのチュートリアルに従うことをお勧めします。
+NOTE: もしlink:https://ja.wikipedia.org/wiki/Fediverse[フェディバース]（fediverse）footnote:[Mastodon、​Misskey、​Lemmy、​Pixelfed、​PeerTubeなど、​フェディバースのネットワークのいくつかはすでにご存知かもしれない。​ ]やlink:https://activitypub.rocks/[ActivityPub]といった用語に馴染みがない場合は、​関連する検索をもう少し行ってからこのチュートリアルに従うことをお勧めします。
 
-このチュートリアルでは、ActivityPubサーバーフレームワークであるlink:https://fedify.dev/[Fedify]を使用して、link:https://joinmastodon.org/ja[Mastodon]やlink:https://misskey-hub.net/ja/[Misskey]のようなActivityPubプロトコルを実装するlink:https://ja.wikipedia.org/wiki/%E3%83%9F%E3%83%8B%E3%83%96%E3%83%AD%E3%82%B0[マイクロブログ]（microblog）を作成します。このチュートリアルは、Fedifyの基本的な動作原理を理解するよりも、Fedifyの活用方法により焦点を当てています。
+このチュートリアルでは、​ActivityPubサーバーフレームワークであるlink:https://fedify.dev/[Fedify]を使用して、​link:https://joinmastodon.org/ja[Mastodon]やlink:https://misskey-hub.net/ja/[Misskey]のようなActivityPubプロトコルを実装するlink:https://ja.wikipedia.org/wiki/%E3%83%9F%E3%83%8B%E3%83%96%E3%83%AD%E3%82%B0[マイクロブログ]（microblog）を作成します。​ このチュートリアルは、​Fedifyの基本的な動作原理を理解するよりも、​Fedifyの活用方法により焦点を当てています。
 
 .Fedifyのロゴ
 image::logo.svg[Fedifyのロゴ,width=100%,align=center]
 
-Fedifyは、ActivityPubやその他の標準規格（総称して「フェディバース」と呼ばれる）を利用した連合サーバーアプリを作る為のTypeScriptライブラリです。連合サーバーアプリを作る際の複雑さやボイラプレートコードを排除し、ビジネスロジックやユーザーエクスペリエンスに集中できる様にすることを目的としています。
+Fedifyは、​ActivityPubやその他の標準規格（総称して「フェディバース」と呼ばれる）を利用した連合サーバーアプリを作る為のTypeScriptライブラリです。​ 連合サーバーアプリを作る際の複雑さやボイラプレートコードを排除し、​ビジネスロジックやユーザーエクスペリエンスに集中できる様にすることを目的としています。
 
-Fedifyプロジェクトについてもっとお知りになりたい方は、以下の資料をご覧ください：
+Fedifyプロジェクトについてもっとお知りになりたい方は、​以下の資料をご覧ください：
 
 - ウェブサイト：<https://fedify.dev/>
 - GitHub：<https://github.com/dahlia/fedify>
 - APIリファレンス：<https://jsr.io/@fedify/fedify>
 - 使用例：<https://github.com/dahlia/fedify/tree/main/examples>
 
-ご質問、ご提案、フィードバックなどございましたら、お気軽にlink:https://github.com/dahlia/fedify/discussions[GitHub Discussions]にご参加いただくか、フェディバースのlink:https://hollo.social/@fedify[@fedify@hollo.social]（日本語対応）までご連絡ください！
+ご質問、​ご提案、​フィードバックなどございましたら、​お気軽にlink:https://github.com/dahlia/fedify/discussions[GitHub Discussions]にご参加いただくか、​フェディバースのlink:https://hollo.social/@fedify[@fedify@hollo.social]（日本語対応）までご連絡ください！
 
 === 対象読者
 
-このチュートリアルは、Fedifyを学んでActivityPubサーバーソフトウェアを作ってみたい方を対象としています。
+このチュートリアルは、​Fedifyを学んでActivityPubサーバーソフトウェアを作ってみたい方を対象としています。
 
-HTMLやHTTPを使用してウェブアプリケーションを作成した経験があり、コマンドラインインターフェース、SQL、JSON、基本的なJavaScriptなどを理解していることを前提としています。ただし、TypeScriptやJSX、ActivityPub、Fedifyについては、このチュートリアルで必要な範囲で説明しますので、知らなくても大丈夫です。
+HTMLやHTTPを使用してウェブアプリケーションを作成した経験があり、​コマンドラインインターフェース、​SQL、​JSON、​基本的なJavaScriptなどを理解していることを前提としています。​ ただし、​TypeScriptやJSX、​ActivityPub、​Fedifyについては、​このチュートリアルで必要な範囲で説明しますので、​知らなくても大丈夫です。
 
-ActivityPubソフトウェアを作成した経験は必要ありませんが、MastodonやMisskeyのようなActivityPubソフトウェアを少なくとも1つは使用したことがあることを想定しています。そうすることで、私たちが何を作ろうとしているのかをイメージしやすくなります。
+ActivityPubソフトウェアを作成した経験は必要ありませんが、​MastodonやMisskeyのようなActivityPubソフトウェアを少なくとも1つは使用したことがあることを想定しています。​ そうすることで、​私たちが何を作ろうとしているのかをイメージしやすくなります。
 
 === 目標
 
-このチュートリアルでは、Fedifyを使用してActivityPubを通じて他の連合ソフトウェアやサービスと通信可能な個人用マイクロブログを作成します。このソフトウェアには以下の機能が含まれます：
+このチュートリアルでは、​Fedifyを使用してActivityPubを通じて他の連合ソフトウェアやサービスと通信可能な個人用マイクロブログを作成します。​このソフトウェアには以下の機能が含まれます：
 
 - ユーザーは1つのアカウントのみ作成できます。
 - フェディバース内の他のアカウントがユーザーをフォローできます。
-- フォロワーはユーザーのフォローを開始したり、やめたりできます。
+- フォロワーはユーザーのフォローを開始したり、​やめたりできます。
 - ユーザーは自分のフォロワーリストを閲覧できます。
 - ユーザーは投稿を作成できます。
 - ユーザーの投稿はフェディバース内のフォロワーに表示されます。
@@ -57,31 +57,31 @@ ActivityPubソフトウェアを作成した経験は必要ありませんが、
 - ユーザーは自分がフォローしているアカウントのリストを閲覧できます。
 - ユーザーは自分がフォローしているアカウントが作成した投稿を時系列順のリストで閲覧できます。
 
-チュートリアルを単純化するために、以下の機能制約を設けています：
+チュートリアルを単純化するために、​以下の機能制約を設けています：
 
-- アカウントプロフィール（自己紹介文、画像など）は設定できません。
+- アカウントプロフィール（自己紹介文、​画像など）は設定できません。
 - 一度作成したアカウントは削除できません。
 - 一度投稿した内容は編集や削除ができません。
 - 一度フォローした他のアカウントのフォローを解除することはできません。
-- いいね、共有、コメント機能はありません。
+- いいね、​共有、​コメント機能はありません。
 - 検索機能はありません。
 - 認証や権限チェックなどのセキュリティ機能はありません。
 
-もちろん、チュートリアルを最後まで進めた後で機能を追加することは自由です。それは良い練習になるでしょう。
+もちろん、​チュートリアルを最後まで進めた後で機能を追加することは自由です。​それは良い練習になるでしょう。
 
-完成したソースコードはlink:https://github.com/dahlia/microblog[GitHubリポジトリ]にアップロードされており、各実装段階に応じてコミットが分かれていますので、参考にしてください。
+完成したソースコードはlink:https://github.com/dahlia/microblog[GitHubリポジトリ]にアップロードされており、​各実装段階に応じてコミットが分かれていますので、​参考にしてください。
 
 == 開発環境のセットアップ
 
 === Node.jsのインストール
 
-FedifyはJavaScriptランタイムとしてlink:https://deno.com/[Deno]、link:https://bun.sh/[Bun]、link:https://nodejs.org/[Node.js]の3つをサポートしています。その中でもNode.jsが最も広く使われているため、このチュートリアルではNode.jsを基準に説明を進めていきます。
+FedifyはJavaScriptランタイムとしてlink:https://deno.com/[Deno]、​link:https://bun.sh/[Bun]、​link:https://nodejs.org/[Node.js]の3つをサポートしています。​その中でもNode.jsが最も広く使われているため、​このチュートリアルではNode.jsを基準に説明を進めていきます。
 
-TIP: JavaScriptランタイムとは、JavaScriptコードを実行するプラットフォームのことです。ウェブブラウザもJavaScriptランタイムの一つであり、コマンドラインやサーバーではNode.jsなどが広く使われています。最近ではlink:https://workers.cloudflare.com/[Cloudflare Workers]のようなクラウドエッジ機能もJavaScriptランタイムの一つとして注目を集めています。
+TIP: JavaScriptランタイムとは、​JavaScriptコードを実行するプラットフォームのことです。​ウェブブラウザもJavaScriptランタイムの一つであり、​コマンドラインやサーバーではNode.jsなどが広く使われています。​最近ではlink:https://workers.cloudflare.com/[Cloudflare Workers]のようなクラウドエッジ機能もJavaScriptランタイムの一つとして注目を集めています。
 
-Fedifyを使用するにはNode.js 20.0.0以上のバージョンが必要です。link:https://nodejs.org/ja/download/package-manager[様々なインストール方法]がありますので、自分に最適な方法でNode.jsをインストールしてください。
+Fedifyを使用するにはNode.js 20.0.0以上のバージョンが必要です。​link:https://nodejs.org/ja/download/package-manager[様々なインストール方法]がありますので、​自分に最適な方法でNode.jsをインストールしてください。
 
-Node.jsがインストールされると、``node``コマンドと``npm``コマンドが使えるようになります：
+Node.jsがインストールされると、​``node``コマンドと``npm``コマンドが使えるようになります：
 
 [source,console]
 ----
@@ -91,32 +91,32 @@ $ npm --version
 
 === ``fedify``コマンドのインストール
 
-Fedifyプロジェクトをセットアップするために、``fedify``コマンドをシステムにインストールする必要があります。link:https://fedify.dev/cli#installation[複数のインストール方法]がありますが、``npm``コマンドを使用するのが最も簡単です：
+Fedifyプロジェクトをセットアップするために、​``fedify``コマンドをシステムにインストールする必要があります。​link:https://fedify.dev/cli#installation[複数のインストール方法]がありますが、​``npm``コマンドを使用するのが最も簡単です：
 
 [source,console]
 ----
 $ npm install -g @fedify/cli
 ----
 
-インストールが完了したら、``fedify``コマンドが使用可能かどうか確認しましょう。以下のコマンドで``fedify``コマンドのバージョンを確認できます。
+インストールが完了したら、​``fedify``コマンドが使用可能かどうか確認しましょう。​以下のコマンドで``fedify``コマンドのバージョンを確認できます。
 
 [source,console]
 ----
 $ fedify --version
 ----
 
-表示されたバージョン番号が1.0.0以上であることを確認してください。それより古いバージョンだと、このチュートリアルを正しく進めることができません。
+表示されたバージョン番号が1.0.0以上であることを確認してください。​それより古いバージョンだと、​このチュートリアルを正しく進めることができません。
 
 === ``fedify init``でプロジェクトの初期化
 
-新しいFedifyプロジェクトを開始するために、作業ディレクトリのパスを決めましょう。このチュートリアルでは__microblog__と名付けることにします。``fedify init``コマンドの後にディレクトリパスを指定して実行します（ディレクトリがまだ存在しなくても大丈夫です）：
+新しいFedifyプロジェクトを開始するために、​作業ディレクトリのパスを決めましょう。​このチュートリアルでは__microblog__と名付けることにします。​``fedify init``コマンドの後にディレクトリパスを指定して実行します（ディレクトリがまだ存在しなくても大丈夫です）：
 
 [source,console]
 ----
 $ fedify init microblog
 ----
 
-``fedify init``コマンドを実行すると、以下のような質問プロンプトが表示されます。順番にmenu:Node.js[npm > Hono > In-memory > In-process]を選択します：
+``fedify init``コマンドを実行すると、​以下のような質問プロンプトが表示されます。​順番にmenu:Node.js[npm > Hono > In-memory > In-process]を選択します：
 
 [listing]
 ----
@@ -157,9 +157,9 @@ $ fedify init microblog
   Deno KV
 ----
 
-NOTE: Fedifyはフルスタックフレームワークではなく、ActivityPubサーバーの実装に特化したフレームワークです。したがって、他のウェブフレームワークと一緒に使用することを前提に設計されています。このチュートリアルでは、ウェブフレームワークとしてlink:https://hono.dev/[Hono]を採用し、Fedifyと共に使用します。
+NOTE: Fedifyはフルスタックフレームワークではなく、​ActivityPubサーバーの実装に特化したフレームワークです。​したがって、​他のウェブフレームワークと一緒に使用することを前提に設計されています。​このチュートリアルでは、​ウェブフレームワークとしてlink:https://hono.dev/[Hono]を採用し、​Fedifyと共に使用します。
 
-しばらくすると、作業ディレクトリ内に以下のような構造でファイルが生成されるのが確認できます：
+しばらくすると、​作業ディレクトリ内に以下のような構造でファイルが生成されるのが確認できます：
 
 * _.vscode/_ — Visual Studio Code関連の設定
 ** _extensions.json_ — Visual Studio Code推奨拡張機能
@@ -174,24 +174,24 @@ NOTE: Fedifyはフルスタックフレームワークではなく、ActivityPub
 * _package.json_ — パッケージメタデータ
 * _tsconfig.json_ — TypeScript設定
 
-想像できると思いますが、JavaScriptではなくTypeScriptを使用するため、__.js__ファイルではなく__.ts__および__.tsx__ファイルがあります。
+想像できると思いますが、​JavaScriptではなくTypeScriptを使用するため、​__.js__ファイルではなく__.ts__および__.tsx__ファイルがあります。
 
-生成されたソースコードは動作するデモです。まずはこの状態で正常に動作するか確認しましょう：
+生成されたソースコードは動作するデモです。​まずはこの状態で正常に動作するか確認しましょう：
 
 [source,console]
 $ npm run dev
 
-上記のコマンドを実行すると、kbd:[Ctrl+C]キーを押すまでサーバーが実行されたままになります：
+上記のコマンドを実行すると、​kbd:[Ctrl+C]キーを押すまでサーバーが実行されたままになります：
 
 [listing]
 Server started at http://0.0.0.0:8000
 
-サーバーが実行された状態で、新しいターミナルタブを開き、以下のコマンドを実行します：
+サーバーが実行された状態で、​新しいターミナルタブを開き、​以下のコマンドを実行します：
 
 [source,console]
 $ fedify lookup http://localhost:8000/users/john
 
-上記のコマンドは、ローカルで起動したActivityPubサーバーの1つのアクター（actor）を照会したものです。ActivityPubにおいて、アクターは様々なActivityPubサーバー間でアクセス可能なアカウントだと考えてください。
+上記のコマンドは、​ローカルで起動したActivityPubサーバーの1つのアクター（actor）を照会したものです。​ActivityPubにおいて、​アクターは様々なActivityPubサーバー間でアクセス可能なアカウントだと考えてください。
 
 以下のような結果が出力されれば正常です：
 
@@ -203,18 +203,18 @@ Person {
   preferredUsername: "john"
 }
 
-この結果から、__/users/john__パスに位置するアクターオブジェクトの種類が``Person``であり、そのIDが__http://localhost:8000/users/john__、名前が__john__、ユーザー名も__john__であることがわかります。
+この結果から、​__/users/john__パスに位置するアクターオブジェクトの種類が``Person``であり、​そのIDが__http://localhost:8000/users/john__、​名前が__john__、​ユーザー名も__john__であることがわかります。
 
 [TIP]
 ====
-``fedify lookup``はActivityPubオブジェクトを照会するコマンドです。これはMastodonで該当URIを検索するのと同じ動作をします。（もちろん、現在皆さんのサーバーはローカルでのみアクセス可能なため、まだMastodonで検索しても結果は表示されません）
+``fedify lookup``はActivityPubオブジェクトを照会するコマンドです。​これはMastodonで該当URIを検索するのと同じ動作をします。​（もちろん、​現在皆さんのサーバーはローカルでのみアクセス可能なため、​まだMastodonで検索しても結果は表示されません）
 
-``fedify lookup``コマンドよりも``curl``を好む場合は、以下のコマンドでもアクター照会が可能です（``-H``オプションで``Accept``ヘッダーを一緒に送信することに注意してください）：
+``fedify lookup``コマンドよりも``curl``を好む場合は、​以下のコマンドでもアクター照会が可能です（``-H``オプションで``Accept``ヘッダーを一緒に送信することに注意してください）：
 
 [source,console]
 $ curl -H"Accept: application/activity+json" http://localhost:8000/users/john
 
-ただし、上記のように照会すると、その結果は人間の目で確認しにくいJSON形式になります。システムに``jq``コマンドもインストールされている場合は、``curl``と``jq``を組み合わせて使用することもできます：
+ただし、​上記のように照会すると、​その結果は人間の目で確認しにくいJSON形式になります。​システムに``jq``コマンドもインストールされている場合は、​``curl``と``jq``を組み合わせて使用することもできます：
 
 [source,console]
 $ curl -H"Accept: application/activity+json" http://localhost:8000/users/john | jq .
@@ -222,30 +222,30 @@ $ curl -H"Accept: application/activity+json" http://localhost:8000/users/john | 
 
 === Visual Studio Code
 
-https://code.visualstudio.com/[Visual Studio Code]が皆さんのお気に入りのエディタでない可能性もあります。しかし、このチュートリアルを進める間はVisual Studio Codeを使用することをお勧めします。なぜなら、TypeScriptを使用する必要があり、Visual Studio Codeは現存する最も便利で優れたTypeScript IDEだからです。また、生成されたプロジェクトセットアップにはすでにVisual Studio Codeの設定が整っているため、フォーマッターやリントなどと格闘する必要もありません。
+https://code.visualstudio.com/[Visual Studio Code]が皆さんのお気に入りのエディタでない可能性もあります。​しかし、​このチュートリアルを進める間はVisual Studio Codeを使用することをお勧めします。​なぜなら、​TypeScriptを使用する必要があり、​Visual Studio Codeは現存する最も便利で優れたTypeScript IDEだからです。​また、​生成されたプロジェクトセットアップにはすでにVisual Studio Codeの設定が整っているため、​フォーマッターやリントなどと格闘する必要もありません。
 
-CAUTION: Visual Studioと混同しないようにしてください。Visual Studio CodeとVisual Studioはブランドを共有しているだけで、まったく異なるソフトウェアです。
+CAUTION: Visual Studioと混同しないようにしてください。​Visual Studio CodeとVisual Studioはブランドを共有しているだけで、​まったく異なるソフトウェアです。
 
-https://code.visualstudio.com/docs/setup/setup-overview[Visual Studio Codeをインストール]した後、menu:ファイル[フォルダを開く…]メニューをクリックして作業ディレクトリを読み込んでください。
+https://code.visualstudio.com/docs/setup/setup-overview[Visual Studio Codeをインストール]した後、​menu:ファイル[フォルダを開く…]メニューをクリックして作業ディレクトリを読み込んでください。
 
-右下に「このリポジトリ 用のおすすめ拡張機能 'Biome' 拡張機能 提供元: biomejs をインストールしますか?」と尋ねるウィンドウが表示された場合は、btn:[インストール]ボタンをクリックしてその拡張機能をインストールしてください。この拡張機能をインストールすると、TypeScriptコードを作成する際にインデントや空白など、コードスタイルと格闘する必要がなく、自動的にコードがフォーマットされます。
+右下に「このリポジトリ 用のおすすめ拡張機能 'Biome' 拡張機能 提供元: biomejs をインストールしますか?」と尋ねるウィンドウが表示された場合は、​btn:[インストール]ボタンをクリックしてその拡張機能をインストールしてください。​この拡張機能をインストールすると、​TypeScriptコードを作成する際にインデントや空白など、​コードスタイルと格闘する必要がなく、​自動的にコードがフォーマットされます。
 
-TIP: 熱心なEmacsまたはVimユーザーの場合、使い慣れたお気に入りのエディタを使用することを止めはしません。ただし、TypeScript LSPの設定は確認しておくことをお勧めします。TypeScript LSPの設定の有無により、生産性に大きな差が出るからです。
+TIP: 熱心なEmacsまたはVimユーザーの場合、​使い慣れたお気に入りのエディタを使用することを止めはしません。​ただし、​TypeScript LSPの設定は確認しておくことをお勧めします。​TypeScript LSPの設定の有無により、​生産性に大きな差が出るからです。
 
 == 予備知識
 
 === TypeScript
 
-コードを修正する前に、簡単にTypeScriptについて触れておきましょう。すでにTypeScriptに慣れている方は、この章をスキップしても構いません。
+コードを修正する前に、​簡単にTypeScriptについて触れておきましょう。​すでにTypeScriptに慣れている方は、​この章をスキップしても構いません。
 
-TypeScriptはJavaScriptに静的型チェックを追加したものです。TypeScriptの文法はJavaScriptの文法とほぼ同じですが、変数や関数の文法に型を指定できるという大きな違いがあります。型指定は変数やパラメータの後にコロン（`:`）をつけて表します。
+TypeScriptはJavaScriptに静的型チェックを追加したものです。​TypeScriptの文法はJavaScriptの文法とほぼ同じですが、​変数や関数の文法に型を指定できるという大きな違いがあります。​型指定は変数やパラメータの後にコロン（`:`）をつけて表します。
 
-例えば、次のコードは``foo``変数が文字列（`string`）であることを示しています：
+例えば、​次のコードは``foo``変数が文字列（`string`）であることを示しています：
 
 [source,typescript]
 let foo: string;
 
-上記のように宣言された``foo``変数に文字列以外の型の値を代入しようとすると、Visual Studio Codeが**実行する前に**赤い下線を引いて型エラーを表示します：
+上記のように宣言された``foo``変数に文字列以外の型の値を代入しようとすると、​Visual Studio Codeが**実行する前に**赤い下線を引いて型エラーを表示します：
 
 [source,typescript]
 ----
@@ -253,14 +253,14 @@ foo = 123;  // <1>
 ----
 <1> ts(2322): 型``number``を型``string``に割り当てることはできません。
 
-コーディング中に赤い下線が表示されたら、無視せずに対処してください。無視してプログラムを実行すると、その部分で実際にエラーが発生する可能性が高いです。
+コーディング中に赤い下線が表示されたら、​無視せずに対処してください。​無視してプログラムを実行すると、​その部分で実際にエラーが発生する可能性が高いです。
 
-TypeScriptでコーディングをしていて最も頻繁に遭遇する型エラーは、``null``の可能性があるエラーです。例えば、次のコードでは``bar``変数が文字列（`string`）である可能性もあれば``null``である可能性もある（`string | null`）と示されています：
+TypeScriptでコーディングをしていて最も頻繁に遭遇する型エラーは、​``null``の可能性があるエラーです。​例えば、​次のコードでは``bar``変数が文字列（`string`）である可能性もあれば``null``である可能性もある（`string | null`）と示されています：
 
 [source,typescript]
 const bar: string | null = someFunction();
 
-この変数の内容から最初の文字を取り出そうとして、次のようなコードを書くとどうなるでしょうか：
+この変数の内容から最初の文字を取り出そうとして、​次のようなコードを書くとどうなるでしょうか：
 
 [source,typescript]
 ----
@@ -268,38 +268,38 @@ const firstChar = bar.charAt(0);  // <1>
 ----
 <1> ts(18047): ``bar``は``null``の可能性があります。
 
-上記のように型エラーが発生します。``bar``が場合によっては``null``である可能性があり、その場合に``null.charAt(0)``を呼び出すとエラーが発生する可能性があるため、コードを修正するよう指摘しています。このような場合、以下のように``null``の場合の処理を追加する必要があります：
+上記のように型エラーが発生します。​``bar``が場合によっては``null``である可能性があり、​その場合に``null.charAt(0)``を呼び出すとエラーが発生する可能性があるため、​コードを修正するよう指摘しています。​このような場合、​以下のように``null``の場合の処理を追加する必要があります：
 
 [source,typescript]
 const firstChar = bar === null ? "" : bar.charAt(0);
 
-このように、TypeScriptはコーディング時に気づかなかった場合の数を想起させ、バグを未然に防ぐのに役立ちます。
+このように、​TypeScriptはコーディング時に気づかなかった場合の数を想起させ、​バグを未然に防ぐのに役立ちます。
 
-また、TypeScriptの副次的な利点の一つは、自動補完が機能することです。例えば、``foo.``まで入力すると、文字列オブジェクトが持つメソッドのリストが表示され、その中から選択できます。これにより、一々ドキュメントを確認しなくても迅速にコーディングが可能になります。
+また、​TypeScriptの副次的な利点の一つは、​自動補完が機能することです。​例えば、​``foo.``まで入力すると、​文字列オブジェクトが持つメソッドのリストが表示され、​その中から選択できます。​これにより、​一々ドキュメントを確認しなくても迅速にコーディングが可能になります。
 
-このチュートリアルを進めながら、TypeScriptの魅力も一緒に感じていただければと思います。何より、FedifyはTypeScriptと一緒に使用したときに最も良い体験が得られるのです。
+このチュートリアルを進めながら、​TypeScriptの魅力も一緒に感じていただければと思います。​何より、​FedifyはTypeScriptと一緒に使用したときに最も良い体験が得られるのです。
 
-TIP: TypeScriptをしっかりじっくり学びたい場合は、公式のlink:https://www.typescriptlang.org/docs/handbook/intro.html[TypeScriptハンドブック]（英語）を読むことをお勧めします。全部読むのに約30分ほどかかります。
+TIP: TypeScriptをしっかりじっくり学びたい場合は、​公式のlink:https://www.typescriptlang.org/docs/handbook/intro.html[TypeScriptハンドブック]（英語）を読むことをお勧めします。​全部読むのに約30分ほどかかります。
 
 === JSX
 
-JSXはJavaScriptコード内にXMLまたはHTMLを挿入できるようにするJavaScriptの文法拡張です。TypeScriptでも使用でき、その場合はTSXと呼ぶこともあります。このチュートリアルでは、すべてのHTMLをJSX文法を通じてJavaScriptコード内に記述します。JSXにすでに慣れている方は、この章をスキップして構いません。
+JSXはJavaScriptコード内にXMLまたはHTMLを挿入できるようにするJavaScriptの文法拡張です。​TypeScriptでも使用でき、​その場合はTSXと呼ぶこともあります。​このチュートリアルでは、​すべてのHTMLをJSX文法を通じてJavaScriptコード内に記述します。​JSXにすでに慣れている方は、​この章をスキップして構いません。
 
-例えば、以下のコードは``<div>``要素が最上位にあるHTMLツリーを``html``変数に代入します：
+例えば、​以下のコードは``<div>``要素が最上位にあるHTMLツリーを``html``変数に代入します：
 
 [source,tsx]
 const html = <div>
-  <p id="greet">こんにちは、<strong>JSX</strong>！</p>
+  <p id="greet">こんにちは、​<strong>JSX</strong>！</p>
 </div>;
 
-中括弧を使用してJavaScript式を挿入することも可能です（以下のコードは、もちろん``getName()``関数が存在すると仮定しています）：
+中括弧を使用してJavaScript式を挿入することも可能です（以下のコードは、​もちろん``getName()``関数が存在すると仮定しています）：
 
 [source,tsx]
-const html = <div title={"こんにちは、" + getName() + "！"}>
-  <p id="greet">こんにちは、<strong>{getName()}</strong>！</p>
+const html = <div title={"こんにちは、​" + getName() + "！"}>
+  <p id="greet">こんにちは、​<strong>{getName()}</strong>！</p>
 </div>;
 
-JSXの特徴の1つは、コンポーネント（component）と呼ばれる独自のタグを定義できることです。コンポーネントは普通のJavaScript関数として定義できます。例えば、以下のコードは``<Container>``コンポーネントを定義して使用する方法を示しています（コンポーネント名は一般的にPascalCaseスタイルに従います）：
+JSXの特徴の1つは、​コンポーネント（component）と呼ばれる独自のタグを定義できることです。​コンポーネントは普通のJavaScript関数として定義できます。​例えば、​以下のコードは``<Container>``コンポーネントを定義して使用する方法を示しています（コンポーネント名は一般的にPascalCaseスタイルに従います）：
 
 [source,tsx]
 ----
@@ -314,39 +314,39 @@ interface ContainerProps {
 }
 
 const Container: FC<ContainerProps> = (props) => {
-  return <div title={"こんにちは、" + props.name + "！"}>{props.children}</div>;
+  return <div title={"こんにちは、​" + props.name + "！"}>{props.children}</div>;
 };
 
 const html = <Container name={getName()}>
-  <p id="greet">こんにちは、<strong>{getName()}</strong>！</p>
+  <p id="greet">こんにちは、​<strong>{getName()}</strong>！</p>
 </Container>;
 ----
 
-上記のコードで``FC``は、我々が使用するウェブフレームワークであるlink:https://hono.dev/[Hono]が提供するもので、コンポーネントの型を定義するのに役立ちます。``FC``はlink:https://www.typescriptlang.org/docs/handbook/2/generics.html[ジェネリック型]（generic type）で、``FC<ContainerProps>``のように山括弧内に入る型が型引数です。ここでは型引数としてプロップ（props）の形式を指定しています。プロップとは、コンポーネントに渡すパラメータのことを指します。上記のコードでは、``<Container>``コンポーネントのプロップ形式として``ContainerProps``インターフェースを宣言して使用しています。
+上記のコードで``FC``は、​我々が使用するウェブフレームワークであるlink:https://hono.dev/[Hono]が提供するもので、​コンポーネントの型を定義するのに役立ちます。​``FC``はlink:https://www.typescriptlang.org/docs/handbook/2/generics.html[ジェネリック型]（generic type）で、​``FC<ContainerProps>``のように山括弧内に入る型が型引数です。​ここでは型引数としてプロップ（props）の形式を指定しています。​プロップとは、​コンポーネントに渡すパラメータのことを指します。​上記のコードでは、​``<Container>``コンポーネントのプロップ形式として``ContainerProps``インターフェースを宣言して使用しています。
 
 [NOTE]
 ====
-ジェネリック型の型引数は複数になる場合があり、カンマで各引数を区切ります。例えば、``Foo<A, B>``はジェネリック型``Foo``に型引数``A``と``B``を適用したものです。
+ジェネリック型の型引数は複数になる場合があり、​カンマで各引数を区切ります。​例えば、​``Foo<A, B>``はジェネリック型``Foo``に型引数``A``と``B``を適用したものです。
 
-また、ジェネリック関数というものもあり、``someFunction<A, B>(foo, bar)``のように表記します。
+また、​ジェネリック関数というものもあり、​``someFunction<A, B>(foo, bar)``のように表記します。
 
-型引数が1つの場合、型引数を囲む山括弧がXML/HTMLタグのように見えますが、JSXの機能とは無関係です。
+型引数が1つの場合、​型引数を囲む山括弧がXML/HTMLタグのように見えますが、​JSXの機能とは無関係です。
 
 - `FC<ContainerProps>`：ジェネリック型``FC``に型引数``ContainerProps``を適用したもの。
-- `<Container>`：``<Container>``という名前のコンポーネントタグを開いたもの。``</Container>``で閉じる必要があります。
+- `<Container>`：``<Container>``という名前のコンポーネントタグを開いたもの。​``</Container>``で閉じる必要があります。
 ====
 
-プロップとして渡されるもののうち、``children``は特に注目する必要があります。これはコンポーネントの子要素が``children``プロップとして渡されるためです。結果として、上記のコードで``html``変数には``<div title="こんにちは、JSX！"><p id="greet">こんにちは、<strong>JSX</strong>！</p></div>``というHTMLツリーが代入されることになります。
+プロップとして渡されるもののうち、​``children``は特に注目する必要があります。​これはコンポーネントの子要素が``children``プロップとして渡されるためです。​結果として、​上記のコードで``html``変数には``<div title="こんにちは、​JSX！"><p id="greet">こんにちは、​<strong>JSX</strong>！</p></div>``というHTMLツリーが代入されることになります。
 
-TIP: JSXはReactプロジェクトで発明され、広く使用され始めました。JSXについて詳しく知りたい場合は、Reactのドキュメントのlink:https://ja.react.dev/learn/writing-markup-with-jsx[JSXでマークアップを記述する]およびlink:https://ja.react.dev/learn/javascript-in-jsx-with-curly-braces[JSXに波括弧でJavaScriptを含める]セクションを読んでみてください。
+TIP: JSXはReactプロジェクトで発明され、​広く使用され始めました。​JSXについて詳しく知りたい場合は、​Reactのドキュメントのlink:https://ja.react.dev/learn/writing-markup-with-jsx[JSXでマークアップを記述する]およびlink:https://ja.react.dev/learn/javascript-in-jsx-with-curly-braces[JSXに波括弧でJavaScriptを含める]セクションを読んでみてください。
 
 == アカウント作成ページ
 
-さて、本格的な開発に取り掛かりましょう。
+さて、​本格的な開発に取り掛かりましょう。
 
-最初に作成するのはアカウント作成ページです。アカウントを作成しないと投稿もできず、他のアカウントをフォローすることもできませんからね。まずは見える部分から作り始めましょう。
+最初に作成するのはアカウント作成ページです。​アカウントを作成しないと投稿もできず、​他のアカウントをフォローすることもできませんからね。​まずは見える部分から作り始めましょう。
 
-まず、__src/views.tsx__ファイルを作成します。そして、そのファイル内にJSXで``<Layout>``コンポーネントを定義します：
+まず、​__src/views.tsx__ファイルを作成します。​そして、​そのファイル内にJSXで``<Layout>``コンポーネントを定義します：
 
 [source,tsx]
 ----
@@ -371,11 +371,11 @@ export const Layout: FC = (props) => (
 );
 ----
 
-デザインに多くの時間を費やさないために、link:https://picocss.com/[Pico CSS]というCSSフレームワークを使用することにします。
+デザインに多くの時間を費やさないために、​link:https://picocss.com/[Pico CSS]というCSSフレームワークを使用することにします。
 
-TIP: 変数やパラメータの型をTypeScriptの型チェッカーが推論できる場合、上記の``props``のように型表記を省略しても問題ありません。このように型表記が省略されている場合でも、Visual Studio Codeで変数名にマウスカーソルを合わせると、その変数がどの型であるかを確認できます。
+TIP: 変数やパラメータの型をTypeScriptの型チェッカーが推論できる場合、​上記の``props``のように型表記を省略しても問題ありません。​このように型表記が省略されている場合でも、​Visual Studio Codeで変数名にマウスカーソルを合わせると、​その変数がどの型であるかを確認できます。
 
-次に、同じファイル内でレイアウトの中に入る``<SetupForm>``コンポーネントを定義します：
+次に、​同じファイル内でレイアウトの中に入る``<SetupForm>``コンポーネントを定義します：
 
 [source,tsx]
 ----
@@ -401,14 +401,14 @@ export const SetupForm: FC = () => (
 );
 ----
 
-JSXでは最上位に1つの要素しか置けませんが、``<SetupForm>``コンポーネントでは``<h1>``と``<form>``の2つの要素を最上位に置いています。そのため、これを1つの要素のようにまとめるために、空のタグの形の``<>``と``</>``で囲んでいます。これをフラグメント（fragment）と呼びます。
+JSXでは最上位に1つの要素しか置けませんが、​``<SetupForm>``コンポーネントでは``<h1>``と``<form>``の2つの要素を最上位に置いています。​そのため、​これを1つの要素のようにまとめるために、​空のタグの形の``<>``と``</>``で囲んでいます。​これをフラグメント（fragment）と呼びます。
 
-定義したコンポーネントを組み合わせて使用する番です。__src/app.tsx__ファイルで、先ほど定義した2つのコンポーネントを``import``します：
+定義したコンポーネントを組み合わせて使用する番です。​__src/app.tsx__ファイルで、​先ほど定義した2つのコンポーネントを``import``します：
 
 [source,typescript]
 import { Layout, SetupForm } from "./views.tsx";
 
-そして、__/setup__ページで先ほど作成したアカウント作成フォームを表示します：
+そして、​__/setup__ページで先ほど作成したアカウント作成フォームを表示します：
 
 [source,tsx]
 app.get("/setup", (c) =>
@@ -419,18 +419,18 @@ app.get("/setup", (c) =>
   ),
 );
 
-さて、それではウェブブラウザで<http://localhost:8000/setup>ページを開いてみましょう。以下のような画面が表示されれば正常です：
+さて、​それではウェブブラウザで<http://localhost:8000/setup>ページを開いてみましょう。​以下のような画面が表示されれば正常です：
 
 .アカウント作成ページ
 image::account-creation-page.png[アカウント作成ページ,align=center]
 
-NOTE: JSXを使用するには、ソースファイルの拡張子が__.jsx__または__.tsx__である必要があります。この章で編集した2つのファイルの拡張子がどちらも__.tsx__であることに注意してください。
+NOTE: JSXを使用するには、​ソースファイルの拡張子が__.jsx__または__.tsx__である必要があります。​この章で編集した2つのファイルの拡張子がどちらも__.tsx__であることに注意してください。
 
 === データベースのセットアップ
 
-さて、見える部分を実装したので、次は動作を実装する番です。アカウント情報を保存する場所が必要ですが、link:https://www.sqlite.org/[SQLite]を使用することにしましょう。SQLiteは小規模なアプリケーションに適したリレーショナルデータベースです。
+さて、​見える部分を実装したので、​次は動作を実装する番です。​アカウント情報を保存する場所が必要ですが、​link:https://www.sqlite.org/[SQLite]を使用することにしましょう。​SQLiteは小規模なアプリケーションに適したリレーショナルデータベースです。
 
-まずはアカウント情報を格納するテーブルを定義しましょう。今後、すべてのテーブル定義は__src/schema.sql__ファイルに記述することにします。アカウント情報は``users``テーブルに格納します：
+まずはアカウント情報を格納するテーブルを定義しましょう。​今後、​すべてのテーブル定義は__src/schema.sql__ファイルに記述することにします。​アカウント情報は``users``テーブルに格納します：
 
 [source,sql]
 ----
@@ -442,17 +442,17 @@ CREATE TABLE IF NOT EXISTS users (
 );
 ----
 
-我々が作成するマイクロブログは1つのアカウントしか作成できないので、主キーである``id``カラムが``1``以外の値を許可しないように制約をかけました。これにより、``users``テーブルには2つ以上のレコードを格納できなくなります。また、アカウントIDを格納する``username``カラムが空の文字列や長すぎる文字列を許可しないように制約を設けました。
+我々が作成するマイクロブログは1つのアカウントしか作成できないので、​主キーである``id``カラムが``1``以外の値を許可しないように制約をかけました。​これにより、​``users``テーブルには2つ以上のレコードを格納できなくなります。​また、​アカウントIDを格納する``username``カラムが空の文字列や長すぎる文字列を許可しないように制約を設けました。
 
-では、``users``テーブルを作成するために__src/schema.sql__ファイルを実行する必要があります。そのためには``sqlite3``コマンドが必要ですが、link:https://www.sqlite.org/download.html[SQLiteのウェブサイトからダウンロードするか]、各プラットフォームのパッケージマネージャーでインストールできます。macOSの場合は、オペレーティングシステムに組み込まれているので、別途ダウンロードする必要はありません。直接ダウンロードする場合は、オペレーティングシステムに合った__sqlite-tools-*.zip__ファイルをダウンロードして解凍してください。パッケージマネージャーを使用する場合は、次のコマンドでインストールすることもできます：
+では、​``users``テーブルを作成するために__src/schema.sql__ファイルを実行する必要があります。​そのためには``sqlite3``コマンドが必要ですが、​link:https://www.sqlite.org/download.html[SQLiteのウェブサイトからダウンロードするか]、​各プラットフォームのパッケージマネージャーでインストールできます。​macOSの場合は、​オペレーティングシステムに組み込まれているので、​別途ダウンロードする必要はありません。​直接ダウンロードする場合は、​オペレーティングシステムに合った__sqlite-tools-*.zip__ファイルをダウンロードして解凍してください。​パッケージマネージャーを使用する場合は、​次のコマンドでインストールすることもできます：
 
 [source,console]
 ----
 $ sudo apt install sqlite3  # <1>
 $ sudo dnf install sqlite   # <2>
-$ choco install sqlite  # <3>
-$ scoop install sqlite  # <4>
-$ winget install SQLite.SQLite  # <5>
+> choco install sqlite  # <3>
+> scoop install sqlite  # <4>
+> winget install SQLite.SQLite  # <5>
 ----
 <1> DebianおよびUbuntu
 <2> FedoraおよびRHEL
@@ -460,16 +460,16 @@ $ winget install SQLite.SQLite  # <5>
 <4> Scoop
 <5> Windows Package Manager
 
-さて、``sqlite3``コマンドの準備ができたら、これを使用してデータベースファイルを作成しましょう：
+さて、​``sqlite3``コマンドの準備ができたら、​これを使用してデータベースファイルを作成しましょう：
 
 [source,console]
 $ sqlite3 microblog.sqlite3 < src/schema.sql
 
-上記のコマンドを実行すると__microblog.sqlite3__ファイルが作成され、この中にSQLiteデータが保存されます。
+上記のコマンドを実行すると__microblog.sqlite3__ファイルが作成され、​この中にSQLiteデータが保存されます。
 
 === アプリからデータベースに接続
 
-これで、私たちが作成するアプリからSQLiteデータベースを使用するだけになりました。Node.jsでSQLiteデータベースを使用するには、SQLiteドライバーライブラリが必要です。ここではlink:https://github.com/WiseLibs/better-sqlite3[better-sqlite3]パッケージを使用することにします。パッケージは``npm``コマンドで簡単にインストールできます：
+これで、​私たちが作成するアプリからSQLiteデータベースを使用するだけになりました。​Node.jsでSQLiteデータベースを使用するには、​SQLiteドライバーライブラリが必要です。​ここではlink:https://github.com/WiseLibs/better-sqlite3[better-sqlite3]パッケージを使用することにします。​パッケージは``npm``コマンドで簡単にインストールできます：
 
 [source,console]
 $ npm add better-sqlite3
@@ -477,12 +477,12 @@ $ npm add --save-dev @types/better-sqlite3
 
 [TIP]
 ====
-https://www.npmjs.com/package/@types/better-sqlite3[@types/better-sqlite3]パッケージは、TypeScript用にbetter-sqlite3パッケージのAPIに関する型情報を含んでいます。このパッケージをインストールすることで、Visual Studio Codeで編集する際に自動補完や型チェックが可能になります。
+https://www.npmjs.com/package/@types/better-sqlite3[@types/better-sqlite3]パッケージは、​TypeScript用にbetter-sqlite3パッケージのAPIに関する型情報を含んでいます。​このパッケージをインストールすることで、​Visual Studio Codeで編集する際に自動補完や型チェックが可能になります。
 
-このように、@types/スコープ内にあるパッケージをlink:https://github.com/DefinitelyTyped/DefinitelyTyped[Definitely Typed]パッケージと呼びます。あるライブラリがTypeScriptで書かれていない場合、コミュニティが型情報を追加して作成したパッケージです。
+このように、​@types/スコープ内にあるパッケージをlink:https://github.com/DefinitelyTyped/DefinitelyTyped[Definitely Typed]パッケージと呼びます。​あるライブラリがTypeScriptで書かれていない場合、​コミュニティが型情報を追加して作成したパッケージです。
 ====
 
-パッケージをインストールしたので、このパッケージを使用してデータベースに接続するコードを書きましょう。__src/db.ts__という新しいファイルを作成し、以下のようにコーディングします：
+パッケージをインストールしたので、​このパッケージを使用してデータベースに接続するコードを書きましょう。​__src/db.ts__という新しいファイルを作成し、​以下のようにコーディングします：
 
 [source,typescript]
 ----
@@ -497,13 +497,13 @@ export default db;
 
 [TIP]
 ====
-参考までに、``db.pragma()``関数を通じて設定した内容は以下のような効果があります：
+参考までに、​``db.pragma()``関数を通じて設定した内容は以下のような効果があります：
 
-- https://www.sqlite.org/wal.html[`journal_mode = WAL`]：SQLiteでアトミックなコミットとロールバックを実装する方法としてlink:https://ja.wikipedia.org/wiki/%E3%83%AD%E3%82%B0%E5%85%88%E8%A1%8C%E6%9B%B8%E3%81%8D%E8%BE%BC%E3%81%BF[ログ先行書き込み]モードを採用します。このモードは、デフォルトのlink:https://www.sqlite.org/lockingv3.html#rollback[ロールバックジャーナル]モードに比べて、ほとんどの場合でパフォーマンスが優れています。
-- https://www.sqlite.org/foreignkeys.html[`foreign_keys = ON`]：SQLiteではデフォルトで外部キー制約をチェックしません。この設定をオンにすると外部キー制約をチェックするようになり、データの整合性を保つのに役立ちます。
+- https://www.sqlite.org/wal.html[`journal_mode = WAL`]：SQLiteでアトミックなコミットとロールバックを実装する方法としてlink:https://ja.wikipedia.org/wiki/%E3%83%AD%E3%82%B0%E5%85%88%E8%A1%8C%E6%9B%B8%E3%81%8D%E8%BE%BC%E3%81%BF[ログ先行書き込み]モードを採用します。​このモードは、​デフォルトのlink:https://www.sqlite.org/lockingv3.html#rollback[ロールバックジャーナル]モードに比べて、​ほとんどの場合でパフォーマンスが優れています。
+- https://www.sqlite.org/foreignkeys.html[`foreign_keys = ON`]：SQLiteではデフォルトで外部キー制約をチェックしません。​この設定をオンにすると外部キー制約をチェックするようになり、​データの整合性を保つのに役立ちます。
 ====
 
-そして、``users``テーブルに保存されるレコードをJavaScriptで表現する型を宣言しましょう。__src/schema.ts__ファイルを作成し、以下のように``User``型を定義します：
+そして、​``users``テーブルに保存されるレコードをJavaScriptで表現する型を宣言しましょう。​__src/schema.ts__ファイルを作成し、​以下のように``User``型を定義します：
 
 [source,typescript]
 export interface User {
@@ -513,9 +513,9 @@ export interface User {
 
 === レコードの挿入
 
-データベースに接続したので、レコードを挿入する番です。
+データベースに接続したので、​レコードを挿入する番です。
 
-まず__src/app.tsx__ファイルを開き、レコード挿入に使用する``db``オブジェクトと``User``型を``import``します：
+まず__src/app.tsx__ファイルを開き、​レコード挿入に使用する``db``オブジェクトと``User``型を``import``します：
 
 [source,typescript]
 import db from "./db.ts";
@@ -559,12 +559,12 @@ app.get("/setup", (c) => {
 
 === テスト
 
-これでアカウント作成機能がひととおり実装されたので、実際に使ってみましょう。ウェブブラウザで<http://localhost:8000/setup>ページを開いてアカウントを作成してください。このチュートリアルでは、これ以降、ユーザー名として__johndoe__を使用したと仮定します。作成できたら、SQLiteデータベースにレコードが正しく挿入されたか確認もしてみましょう：
+これでアカウント作成機能がひととおり実装されたので、​実際に使ってみましょう。​ウェブブラウザで<http://localhost:8000/setup>ページを開いてアカウントを作成してください。​このチュートリアルでは、​これ以降、​ユーザー名として__johndoe__を使用したと仮定します。​作成できたら、​SQLiteデータベースにレコードが正しく挿入されたか確認もしてみましょう：
 
 [source,console]
 $ echo "SELECT * FROM users;" | sqlite3 -table microblog.sqlite3
 
-レコードが正しく挿入されていれば、以下のような出力が表示されるはずです（もちろん、``johndoe``は皆さんが入力したユーザー名によって異なります）：
+レコードが正しく挿入されていれば、​以下のような出力が表示されるはずです（もちろん、​``johndoe``は皆さんが入力したユーザー名によって異なります）：
 
 [cols="1,1"]
 |===
@@ -576,9 +576,9 @@ $ echo "SELECT * FROM users;" | sqlite3 -table microblog.sqlite3
 
 == プロフィールページ
 
-これでアカウントが作成されたので、アカウント情報を表示するプロフィールページを実装しましょう。表示する情報はほとんどありませんが。
+これでアカウントが作成されたので、​アカウント情報を表示するプロフィールページを実装しましょう。​表示する情報はほとんどありませんが。
 
-今回も見える部分から作業を始めましょう。__src/views.tsx__ファイルに``<Profile>``コンポーネントを定義します：
+今回も見える部分から作業を始めましょう。​__src/views.tsx__ファイルに``<Profile>``コンポーネントを定義します：
 
 [source,tsx]
 ----
@@ -622,29 +622,29 @@ app.get("/users/:username", async (c) => {
 });
 ----
 
-ここまでできたらテストをしてみましょう。ウェブブラウザで<http://localhost:8000/users/johndoe>ページを開いてみてください（アカウント作成時にユーザー名を``johndoe``にした場合。そうでない場合はURLを変更する必要があります）。以下のような画面が表示されるはずです：
+ここまでできたらテストをしてみましょう。​ウェブブラウザで<http://localhost:8000/users/johndoe>ページを開いてみてください（アカウント作成時にユーザー名を``johndoe``にした場合。​そうでない場合はURLを変更する必要があります）。​以下のような画面が表示されるはずです：
 
 .プロフィールページ
 image::profile-page.png[プロフィールページ,align=center]
 
 [TIP]
 ====
-フェディバースハンドル（fediverse handle）、略してハンドルとは、フェディバース内でアカウントを指す一意なアドレスのようなものです。例えば``+@hongminhee@fedibird.com+``のような形をしています。メールアドレスに似た形をしていますが、実際の構成もメールアドレスに似ています。最初に``@``が来て、その後に名前、そして再び``@``が来た後、最後にアカウントが属するサーバーのドメイン名が来ます。時々、最初の``@``が省略されることもあります。
+フェディバースハンドル（fediverse handle）、​略してハンドルとは、​フェディバース内でアカウントを指す一意なアドレスのようなものです。​例えば``+@hongminhee@fedibird.com+``のような形をしています。​メールアドレスに似た形をしていますが、​実際の構成もメールアドレスに似ています。​最初に``@``が来て、​その後に名前、​そして再び``@``が来た後、​最後にアカウントが属するサーバーのドメイン名が来ます。​時々、​最初の``@``が省略されることもあります。
 
-技術的には、ハンドルはlink:https://datatracker.ietf.org/doc/html/rfc7033[WebFinger]とlink:https://datatracker.ietf.org/doc/html/rfc7565[`acct:` URI形式]という2つの標準で実装されています。Fedifyがこれを実装しているため、このチュートリアルを進める間は実装の詳細を知らなくても大丈夫です。
+技術的には、​ハンドルはlink:https://datatracker.ietf.org/doc/html/rfc7033[WebFinger]とlink:https://datatracker.ietf.org/doc/html/rfc7565[`acct:` URI形式]という2つの標準で実装されています。​Fedifyがこれを実装しているため、​このチュートリアルを進める間は実装の詳細を知らなくても大丈夫です。
 ====
 
 == アクターの実装
 
-ActivityPubは、その名前が示すように、アクティビティ（activity）を送受信するプロトコルです。投稿、投稿の編集、投稿の削除、投稿へのいいね、コメントの追加、プロフィールの編集…ソーシャルメディアで起こるすべての出来事をアクティビティとして表現します。
+ActivityPubは、​その名前が示すように、​アクティビティ（activity）を送受信するプロトコルです。​投稿、​投稿の編集、​投稿の削除、​投稿へのいいね、​コメントの追加、​プロフィールの編集…ソーシャルメディアで起こるすべての出来事をアクティビティとして表現します。
 
-そして、すべてのアクティビティはアクター（actor）からアクターへ送信されます。例えば、山田太郎が投稿を作成すると、「投稿作成」（`Create(Note)`）アクティビティが山田太郎から山田太郎のフォロワーたちに送信されます。その投稿に佐藤花子がいいねをすると、「いいね」（`Like`）アクティビティが佐藤花子から山田太郎に送信されます。
+そして、​すべてのアクティビティはアクター（actor）からアクターへ送信されます。​例えば、​山田太郎が投稿を作成すると、​「投稿作成」（`Create(Note)`）アクティビティが山田太郎から山田太郎のフォロワーたちに送信されます。​その投稿に佐藤花子がいいねをすると、​「いいね」（`Like`）アクティビティが佐藤花子から山田太郎に送信されます。
 
-したがって、ActivityPubを実装する最初のステップはアクターを実装することです。
+したがって、​ActivityPubを実装する最初のステップはアクターを実装することです。
 
-``fedify init``コマンドで生成されたデモアプリには既にとてもシンプルなアクターが実装されていますが、MastodonやMisskeyなどの実際のソフトウェアと通信するためには、アクターをもう少しきちんと実装する必要があります。
+``fedify init``コマンドで生成されたデモアプリには既にとてもシンプルなアクターが実装されていますが、​MastodonやMisskeyなどの実際のソフトウェアと通信するためには、​アクターをもう少しきちんと実装する必要があります。
 
-まずは、現在の実装を一度見てみましょう。__src/federation.ts__ファイルを開いてみましょう：
+まずは、​現在の実装を一度見てみましょう。​__src/federation.ts__ファイルを開いてみましょう：
 
 [source,typescript,highlight=12..18]
 ----
@@ -670,15 +670,15 @@ federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => 
 export default federation;
 ----
 
-注目すべき部分は``setActorDispatcher()``メソッドです。このメソッドは、他のActivityPubソフトウェアが我々が作成したサーバーのアクターを照会する際に使用するURLとその動作を定義します。例えば、先ほど我々が行ったように__/users/johndoe__を照会すると、コールバック関数の``identifier``パラメータに``"johndoe"``という文字列値が入ってきます。そして、コールバック関数は``Person``クラスのインスタンスを返して、照会されたアクターの情報を伝達します。
+注目すべき部分は``setActorDispatcher()``メソッドです。​このメソッドは、​他のActivityPubソフトウェアが我々が作成したサーバーのアクターを照会する際に使用するURLとその動作を定義します。​例えば、​先ほど我々が行ったように__/users/johndoe__を照会すると、​コールバック関数の``identifier``パラメータに``"johndoe"``という文字列値が入ってきます。​そして、​コールバック関数は``Person``クラスのインスタンスを返して、​照会されたアクターの情報を伝達します。
 
-``ctx``パラメータには``Context``オブジェクトが渡されますが、これはActivityPubプロトコルに関連する様々な機能を含むオブジェクトです。例えば、上記のコードで使用されている``getActorUri()``メソッドは、パラメータとして渡された``identifier``を含むアクターの一意なURIを返します。このURIは``Person``オブジェクトの一意な識別子として使用されています。
+``ctx``パラメータには``Context``オブジェクトが渡されますが、​これはActivityPubプロトコルに関連する様々な機能を含むオブジェクトです。​例えば、​上記のコードで使用されている``getActorUri()``メソッドは、​パラメータとして渡された``identifier``を含むアクターの一意なURIを返します。​このURIは``Person``オブジェクトの一意な識別子として使用されています。
 
-実装コードを見ればわかるように、現在は__/users/__パスの後にどのようなハンドルが来ても、呼び出されたままのアクター情報を**作り出して**返しています。しかし、我々が望むのは実際に登録されているアカウントについてのみ照会できるようにすることです。この部分をデータベースに存在するアカウントについてのみ返すように修正しましょう。
+実装コードを見ればわかるように、​現在は__/users/__パスの後にどのようなハンドルが来ても、​呼び出されたままのアクター情報を**作り出して**返しています。​しかし、​我々が望むのは実際に登録されているアカウントについてのみ照会できるようにすることです。​この部分をデータベースに存在するアカウントについてのみ返すように修正しましょう。
 
 === テーブルの作成
 
-``actors``テーブルを作成する必要があります。このテーブルは、現在のインスタンスサーバーのアカウントのみを含む``users``テーブルとは異なり、連合されるサーバーに属するリモートアクターも含みます。テーブルは次のようになります。__src/schema.sql__ファイルに次のSQLを追加してください：
+``actors``テーブルを作成する必要があります。​このテーブルは、​現在のインスタンスサーバーのアカウントのみを含む``users``テーブルとは異なり、​連合されるサーバーに属するリモートアクターも含みます。​テーブルは次のようになります。​__src/schema.sql__ファイルに次のSQLを追加してください：
 
 [source,sql]
 ----
@@ -700,23 +700,23 @@ CREATE TABLE IF NOT EXISTS actors (
                                            CHECK (created <> '')
 );
 ----
-<1> ``user_id``カラムは``users``カラムと連携するための外部キーです。該当レコードがリモートアクターを表す場合は``NULL``が入りますが、現在のインスタンスサーバーのアカウントの場合は該当アカウントの``users.id``値が入ります。
-<2> ``uri``カラムはアクターIDと呼ばれるアクターの一意なURIを含みます。アクターを含むすべてのActivityPubオブジェクトはURI形式の一意なIDを持ちます。したがって、空にすることはできず、重複もできません。
-<3> ``handle``カラムは``+@johndoe@example.com+``形式のフェディバースハンドルを含みます。同様に、空にすることはできず、重複もできません。
-<4> ``name``カラムはUIに表示される名前を含みます。通常はフルネームやニックネームが入ります。ただし、ActivityPub仕様に従い、このカラムは空になる可能性があります。
-<5> ``inbox_url``カラムは該当アクターのインボックス（inbox）URLを含みます。インボックスが何であるかについては後で詳しく説明しますが、現時点ではアクターに必須で存在しなければならないということだけ覚えておいてください。このカラムも空にすることはできず、重複もできません。
-<6> ``shared_inbox_url``カラムは該当アクターの共有インボックス（shared inbox）URLを含みます。これについても後で詳しく説明します。必須ではないため、空になる可能性があり、カラム名の通り他のアクターと同じ共有インボックスURLを共有することもできます。
-<7> ``url``カラムは該当アクターのプロフィールURLを含みます。プロフィールURLとは、ウェブブラウザで開いて見ることができるプロフィールページのURLを意味します。アクターのIDとプロフィールURLが同じ場合もありますが、サービスによって異なる場合もあるため、その場合にこのカラムにプロフィールURLを含めます。空になる可能性があります。
-<8> ``created``カラムはレコードが作成された時点を記録します。空にすることはできず、デフォルトで挿入時点の時刻が記録されます。
+<1> ``user_id``カラムは``users``カラムと連携するための外部キーです。​該当レコードがリモートアクターを表す場合は``NULL``が入りますが、​現在のインスタンスサーバーのアカウントの場合は該当アカウントの``users.id``値が入ります。
+<2> ``uri``カラムはアクターIDと呼ばれるアクターの一意なURIを含みます。​アクターを含むすべてのActivityPubオブジェクトはURI形式の一意なIDを持ちます。​したがって、​空にすることはできず、​重複もできません。
+<3> ``handle``カラムは``+@johndoe@example.com+``形式のフェディバースハンドルを含みます。​同様に、​空にすることはできず、​重複もできません。
+<4> ``name``カラムはUIに表示される名前を含みます。​通常はフルネームやニックネームが入ります。​ただし、​ActivityPub仕様に従い、​このカラムは空になる可能性があります。
+<5> ``inbox_url``カラムは該当アクターのインボックス（inbox）URLを含みます。​インボックスが何であるかについては後で詳しく説明しますが、​現時点ではアクターに必須で存在しなければならないということだけ覚えておいてください。​このカラムも空にすることはできず、​重複もできません。
+<6> ``shared_inbox_url``カラムは該当アクターの共有インボックス（shared inbox）URLを含みます。​これについても後で詳しく説明します。​必須ではないため、​空になる可能性があり、​カラム名の通り他のアクターと同じ共有インボックスURLを共有することもできます。
+<7> ``url``カラムは該当アクターのプロフィールURLを含みます。​プロフィールURLとは、​ウェブブラウザで開いて見ることができるプロフィールページのURLを意味します。​アクターのIDとプロフィールURLが同じ場合もありますが、​サービスによって異なる場合もあるため、​その場合にこのカラムにプロフィールURLを含めます。​空になる可能性があります。
+<8> ``created``カラムはレコードが作成された時点を記録します。​空にすることはできず、​デフォルトで挿入時点の時刻が記録されます。
 
-さて、これで__src/schema.sql__ファイルを__microblog.sqlite3__データベースファイルに適用しましょう：
+さて、​これで__src/schema.sql__ファイルを__microblog.sqlite3__データベースファイルに適用しましょう：
 
 [source,console]
 $ sqlite3 microblog.sqlite3 < src/schema.sql
 
-TIP: 先ほど``users``テーブルを定義する際に``CREATE TABLE IF NOT EXISTS``文を使用したため、何度実行しても問題ありません。
+TIP: 先ほど``users``テーブルを定義する際に``CREATE TABLE IF NOT EXISTS``文を使用したため、​何度実行しても問題ありません。
 
-そして、``actors``テーブルに保存されるレコードをJavaScriptで表現する型も__src/schema.ts__に定義します：
+そして、​``actors``テーブルに保存されるレコードをJavaScriptで表現する型も__src/schema.ts__に定義します：
 
 [source,typescript]
 export interface Actor {
@@ -733,9 +733,9 @@ export interface Actor {
 
 === アクターレコード
 
-現在``users``テーブルにレコードが1つありますが、これと対応するレコードが``actors``テーブルにはありません。アカウントを作成する際に``actors``テーブルにレコードを追加しなかったためです。アカウント作成コードを修正して``users``と``actors``の両方にレコードを追加するようにする必要があります。
+現在``users``テーブルにレコードが1つありますが、​これと対応するレコードが``actors``テーブルにはありません。​アカウントを作成する際に``actors``テーブルにレコードを追加しなかったためです。​アカウント作成コードを修正して``users``と``actors``の両方にレコードを追加するようにする必要があります。
 
-まず__src/views.tsx__にある``SetupForm``で、ユーザー名と一緒に``actors.name``カラムに入れる名前も入力を受け付けるようにしましょう：
+まず__src/views.tsx__にある``SetupForm``で、​ユーザー名と一緒に``actors.name``カラムに入れる名前も入力を受け付けるようにしましょう：
 
 [source,tsx,highlight=16..18]
 export const SetupForm: FC = () => (
@@ -767,7 +767,7 @@ export const SetupForm: FC = () => (
 [source,typescript]
 import type { Actor, User } from "./schema.ts";
 
-これで入力された名前をはじめ、必要な情報を``actors``テーブルのレコードとして作成するコードを``POST /setup``ハンドラに追加します：
+これで入力された名前をはじめ、​必要な情報を``actors``テーブルのレコードとして作成するコードを``POST /setup``ハンドラに追加します：
 
 [source,typescript,highlight=7,19..24,26,30..44]
 ----
@@ -819,7 +819,7 @@ app.post("/setup", async (c) => {
 });
 ----
 
-アカウントが既に存在するかチェックする際、``users``テーブルにレコードがない場合だけでなく、対応するレコードが``actors``テーブルにない場合もまだアカウントが存在しないと判断するように修正しました。同じ条件を``GET /setup``ハンドラおよび``GET /users/{username}``ハンドラにも適用します：
+アカウントが既に存在するかチェックする際、​``users``テーブルにレコードがない場合だけでなく、​対応するレコードが``actors``テーブルにない場合もまだアカウントが存在しないと判断するように修正しました。​同じ条件を``GET /setup``ハンドラおよび``GET /users/{username}``ハンドラにも適用します：
 
 [source,tsx,highlight=7]
 ----
@@ -868,23 +868,23 @@ app.get("/users/:username", async (c) => {
 });
 ----
 
-TIP: TypeScriptでは``A & B``は``A``型と同時に``B``型であるオブジェクトを意味します。例えば、``{ a: number } & { b: string }``型があるとすると、``{ a: 123 }``や``{ b: "foo" }``はこの型を満たしませんが、``{ a: 123, b: "foo" }``はこの型を満たします。
+TIP: TypeScriptでは``A & B``は``A``型と同時に``B``型であるオブジェクトを意味します。​例えば、​``{ a: number } & { b: string }``型があるとすると、​``{ a: 123 }``や``{ b: "foo" }``はこの型を満たしませんが、​``{ a: 123, b: "foo" }``はこの型を満たします。
 
-最後に、__src/federation.ts__ファイルを開き、アクターディスパッチャーの下に次のコードを追加します：
+最後に、​__src/federation.ts__ファイルを開き、​アクターディスパッチャーの下に次のコードを追加します：
 
 [source,typescript]
 federation.setInboxListeners("/users/{handle}/inbox", "/inbox");
 
-``setInboxListeners()``メソッドは今のところ気にしないでください。これもまたインボックスについて説明する際に一緒に扱うことにします。ただ、アカウント作成コードで使用した``getInboxUri()``メソッドが正しく動作するためには上記のコードが必要だという点だけ指摘しておきます。
+``setInboxListeners()``メソッドは今のところ気にしないでください。​これもまたインボックスについて説明する際に一緒に扱うことにします。​ただ、​アカウント作成コードで使用した``getInboxUri()``メソッドが正しく動作するためには上記のコードが必要だという点だけ指摘しておきます。
 
-コードをすべて修正したら、ブラウザで<http://localhost:8000/setup>ページを開いて再度アカウントを作成します：
+コードをすべて修正したら、​ブラウザで<http://localhost:8000/setup>ページを開いて再度アカウントを作成します：
 
 .アカウント作成ページ
 image::account-creation-page-2.png[アカウント作成ページ,align=center]
 
 === アクターディスパッチャー
 
-``actors``テーブルを作成してレコードも追加したので、再び__src/federation.ts__ファイルを修正しましょう。まず``db``オブジェクトと``Endpoints``および``Actor``を``import``します：
+``actors``テーブルを作成してレコードも追加したので、​再び__src/federation.ts__ファイルを修正しましょう。​まず``db``オブジェクトと``Endpoints``および``Actor``を``import``します：
 
 [source,typescript]
 import { Endpoints, Person, createFederation } from "@fedify/fedify";
@@ -920,29 +920,29 @@ federation.setActorDispatcher("/users/{handle}", async (ctx, handle) => {
 });
 ----
 
-変更されたコードでは、データベースの``users``テーブルを照会して現在のサーバーにあるアカウントでない場合は``null``を返すようになりました。つまり、``GET /users/johndoe``（アカウント作成時にユーザー名を``johndoe``にしたと仮定した場合）リクエストに対しては正しい``Person``オブジェクトを``200 OK``とともに応答し、それ以外のリクエストに対しては``404 Not Found``を応答することになります。
+変更されたコードでは、​データベースの``users``テーブルを照会して現在のサーバーにあるアカウントでない場合は``null``を返すようになりました。​つまり、​``GET /users/johndoe``（アカウント作成時にユーザー名を``johndoe``にしたと仮定した場合）リクエストに対しては正しい``Person``オブジェクトを``200 OK``とともに応答し、​それ以外のリクエストに対しては``404 Not Found``を応答することになります。
 
-``Person``オブジェクトを生成する部分もどのように変わったか見てみましょう。まず``name``属性が追加されました。このプロパティは``actors.name``カラムの値を使用します。``inbox``と``endpoints``属性はインボックスについて説明するときに一緒に扱うことにします。``url``属性はこのアカウントのプロフィールURLを含みますが、このチュートリアルではアクターIDとアクターのプロフィールURLを一致させることにします。
+``Person``オブジェクトを生成する部分もどのように変わったか見てみましょう。​まず``name``属性が追加されました。​このプロパティは``actors.name``カラムの値を使用します。​``inbox``と``endpoints``属性はインボックスについて説明するときに一緒に扱うことにします。​``url``属性はこのアカウントのプロフィールURLを含みますが、​このチュートリアルではアクターIDとアクターのプロフィールURLを一致させることにします。
 
 [TIP]
 ====
-目のいい方々は気づいたかもしれませんが、HonoとFedify両方で``GET /users/{handle}``に対するハンドラを重複して定義しています。では、実際にそのリクエストを送信すると、どちらが応答することになるでしょうか？答えは、リクエストの``Accept``ヘッダーによって異なります。``Accept: text/html``ヘッダーと一緒にリクエストを送信すると、Hono側のリクエストハンドラが応答します。``Accept: application/activity+json``ヘッダーと一緒にリクエストを送信すると、Fedify側のリクエストハンドラが応答します。
+目のいい方々は気づいたかもしれませんが、​HonoとFedify両方で``GET /users/{handle}``に対するハンドラを重複して定義しています。​では、​実際にそのリクエストを送信すると、​どちらが応答することになるでしょうか？答えは、​リクエストの``Accept``ヘッダーによって異なります。​``Accept: text/html``ヘッダーと一緒にリクエストを送信すると、​Hono側のリクエストハンドラが応答します。​``Accept: application/activity+json``ヘッダーと一緒にリクエストを送信すると、​Fedify側のリクエストハンドラが応答します。
 
-このようにリクエストの``Accept``ヘッダーに応じて異なる応答を返す方式をHTTPのlink:https://developer.mozilla.org/ja/docs/Web/HTTP/Content_negotiation[コンテンツネゴシエーション]（content negotiation）と呼び、Fedify自体がコンテンツネゴシエーションを実装しています。より具体的には、すべてのリクエストは一度Fedifyを通過し、ActivityPubに関連するリクエストでない場合は連携されたフレームワーク、このチュートリアルではHonoにリクエストを渡すようになっています。
+このようにリクエストの``Accept``ヘッダーに応じて異なる応答を返す方式をHTTPのlink:https://developer.mozilla.org/ja/docs/Web/HTTP/Content_negotiation[コンテンツネゴシエーション]（content negotiation）と呼び、​Fedify自体がコンテンツネゴシエーションを実装しています。​より具体的には、​すべてのリクエストは一度Fedifyを通過し、​ActivityPubに関連するリクエストでない場合は連携されたフレームワーク、​このチュートリアルではHonoにリクエストを渡すようになっています。
 ====
 
 TIP: FedifyではすべてのURIおよびURLをlink:https://developer.mozilla.org/ja/docs/Web/API/URL[`URL`]インスタンスで表現します。
 
 === テスト
 
-それでは、アクターディスパッチャーをテストしてみましょう。
+それでは、​アクターディスパッチャーをテストしてみましょう。
 
-サーバーが起動している状態で、新しいターミナルタブを開いて以下のコマンドを入力します：
+サーバーが起動している状態で、​新しいターミナルタブを開いて以下のコマンドを入力します：
 
 [source,console]
 $ fedify lookup http://localhost:8000/users/alice
 
-``alice``というアカウントが存在しないため、先ほどとは異なり、今度は次のようなエラーが発生するはずです：
+``alice``というアカウントが存在しないため、​先ほどとは異なり、​今度は次のようなエラーが発生するはずです：
 
 [listing]
 ✔ Looking up the object...
@@ -969,9 +969,9 @@ Person {
 
 == 暗号鍵ペア
 
-次に実装するのは、署名のためのアクターの暗号鍵です。ActivityPubではアクターがアクティビティを作成して送信しますが、このときアクティビティを本当にそのアクターが作成したことを証明するためにlink:https://ja.wikipedia.org/wiki/%E3%83%87%E3%82%B8%E3%82%BF%E3%83%AB%E7%BD%B2%E5%90%8D[デジタル署名]を行います。そのために、アクターはペアになった自身だけの秘密鍵（private key）と公開鍵（public key）のペアを作成して持っており、その公開鍵を他のアクターも見られるように公開します。アクターはアクティビティを受信する際に、送信者の公開鍵とアクティビティの署名を検証して、そのアクティビティが本当に送信者が生成したものかどうかを確認します。署名と署名の検証はFedifyが自動的に行いますが、鍵ペアを生成して保存するのは直接実装する必要があります。
+次に実装するのは、​署名のためのアクターの暗号鍵です。​ActivityPubではアクターがアクティビティを作成して送信しますが、​このときアクティビティを本当にそのアクターが作成したことを証明するためにlink:https://ja.wikipedia.org/wiki/%E3%83%87%E3%82%B8%E3%82%BF%E3%83%AB%E7%BD%B2%E5%90%8D[デジタル署名]を行います。​そのために、​アクターはペアになった自身だけの秘密鍵（private key）と公開鍵（public key）のペアを作成して持っており、​その公開鍵を他のアクターも見られるように公開します。​アクターはアクティビティを受信する際に、​送信者の公開鍵とアクティビティの署名を検証して、​そのアクティビティが本当に送信者が生成したものかどうかを確認します。​署名と署名の検証はFedifyが自動的に行いますが、​鍵ペアを生成して保存するのは直接実装する必要があります。
 
-CAUTION: 秘密鍵は、その名前が示すように署名を行う主体以外はアクセスできないようにする必要があります。一方、公開鍵はその用途自体が公開することなので、誰でもアクセスしても問題ありません。
+CAUTION: 秘密鍵は、​その名前が示すように署名を行う主体以外はアクセスできないようにする必要があります。​一方、​公開鍵はその用途自体が公開することなので、​誰でもアクセスしても問題ありません。
 
 === テーブルの作成
 
@@ -987,11 +987,11 @@ CREATE TABLE IF NOT EXISTS keys (
   PRIMARY KEY (user_id, type)
 );
 
-テーブルをよく見ると、``type``カラムには2種類の値のみが許可されていることがわかります。一つはlink:https://www.rfc-editor.org/rfc/rfc2313[RSA-PKCS#1-v1.5]形式で、もう一つはlink:https://ed25519.cr.yp.to/[Ed25519]形式です。（それぞれが何を意味するかは、このチュートリアルでは重要ではありません）主キーが``(user_id, type)``にかかっているので、1ユーザーに対して最大二つの鍵ペアが存在できます。
+テーブルをよく見ると、​``type``カラムには2種類の値のみが許可されていることがわかります。​一つはlink:https://www.rfc-editor.org/rfc/rfc2313[RSA-PKCS#1-v1.5]形式で、​もう一つはlink:https://ed25519.cr.yp.to/[Ed25519]形式です。​（それぞれが何を意味するかは、​このチュートリアルでは重要ではありません）主キーが``(user_id, type)``にかかっているので、​1ユーザーに対して最大二つの鍵ペアが存在できます。
 
-TIP: このチュートリアルで詳しく説明することはできませんが、2024年9月現在、ActivityPubネットワークはRSA-PKCS#1-v1.5形式からEd25519形式に移行中であると知っておくと良いでしょう。あるソフトウェアはRSA-PKCS#1-v1.5形式のみを受け入れ、あるソフトウェアはEd25519形式を受け入れます。したがって、両方と通信するためには、二つの鍵ペアが両方とも必要になるのです。
+TIP: このチュートリアルで詳しく説明することはできませんが、​2024年9月現在、​ActivityPubネットワークはRSA-PKCS#1-v1.5形式からEd25519形式に移行中であると知っておくと良いでしょう。​あるソフトウェアはRSA-PKCS#1-v1.5形式のみを受け入れ、​あるソフトウェアはEd25519形式を受け入れます。​したがって、​両方と通信するためには、​二つの鍵ペアが両方とも必要になるのです。
 
-``private_key``および``public_key``カラムは文字列を受け取れるようになっていますが、ここにはJSONデータを入れる予定です。秘密鍵と公開鍵をJSONでエンコードする方法については、後で順を追って説明します。
+``private_key``および``public_key``カラムは文字列を受け取れるようになっていますが、​ここにはJSONデータを入れる予定です。​秘密鍵と公開鍵をJSONでエンコードする方法については、​後で順を追って説明します。
 
 では``keys``テーブルを作成しましょう：
 
@@ -1013,7 +1013,7 @@ export interface Key {
 
 これで鍵ペアを生成して読み込むコードを書く必要があります。
 
-__src/federation.ts__ファイルを開き、Fedifyが提供する``exportJwk()``、``generateCryptoKeyPair()``、``importJwk()``関数と先ほど定義した``Key``型を``import``しましょう：
+__src/federation.ts__ファイルを開き、​Fedifyが提供する``exportJwk()``、​``generateCryptoKeyPair()``、​``importJwk()``関数と先ほど定義した``Key``型を``import``しましょう：
 
 [source,typescript,highlight=5..7,9]
 ----
@@ -1072,11 +1072,11 @@ federation
     ) as Record<Key["type"], Key>;
     const pairs: CryptoKeyPair[] = [];
     // ユーザーがサポートする2つの鍵形式（RSASSA-PKCS1-v1_5およびEd25519）それぞれについて
-    // 鍵ペアを保有しているか確認し、なければ生成後データベースに保存：
+    // 鍵ペアを保有しているか確認し、​なければ生成後データベースに保存：
     for (const keyType of ["RSASSA-PKCS1-v1_5", "Ed25519"] as const) {
       if (keys[keyType] == null) {
         logger.debug(
-          "ユーザー{identifier}は{keyType}鍵を持っていません。作成します...",
+          "ユーザー{identifier}は{keyType}鍵を持っていません。​作成します...",
           { identifier, keyType },
         );
         const { privateKey, publicKey } = await generateCryptoKeyPair(keyType);
@@ -1109,15 +1109,15 @@ federation
   });
 ----
 
-まず最初に注目すべきは、``setActorDispatcher()``メソッドに連続して呼び出されている``setKeyPairsDispatcher()``メソッドです。このメソッドは、コールバック関数から返された鍵ペアをアカウントに紐付ける役割を果たします。このように鍵ペアを紐付けることで、Fedifyがアクティビティを送信する際に自動的に登録された秘密鍵でデジタル署名を追加します。
+まず最初に注目すべきは、​``setActorDispatcher()``メソッドに連続して呼び出されている``setKeyPairsDispatcher()``メソッドです。​このメソッドは、​コールバック関数から返された鍵ペアをアカウントに紐付ける役割を果たします。​このように鍵ペアを紐付けることで、​Fedifyがアクティビティを送信する際に自動的に登録された秘密鍵でデジタル署名を追加します。
 
-``generateCryptoKeyPair()``関数は新しい秘密鍵と公開鍵のペアを生成し、``CryptoKeyPair``オブジェクトとして返します。参考までに、``CryptoKeyPair``型は``{ privateKey: CryptoKey; publicKey: CryptoKey; }``形式です。
+``generateCryptoKeyPair()``関数は新しい秘密鍵と公開鍵のペアを生成し、​``CryptoKeyPair``オブジェクトとして返します。​参考までに、​``CryptoKeyPair``型は``{ privateKey: CryptoKey; publicKey: CryptoKey; }``形式です。
 
-``exportJwk()``関数は``CryptoKey``オブジェクトをJWK形式で表現したオブジェクトを返します。JWK形式が何かを知る必要はありません。単に暗号鍵をJSONで表現する標準的な形式だと理解すれば十分です。``CryptoKey``は暗号鍵をJavaScriptオブジェクトとして表現するためのウェブ標準の型です。
+``exportJwk()``関数は``CryptoKey``オブジェクトをJWK形式で表現したオブジェクトを返します。​JWK形式が何かを知る必要はありません。​単に暗号鍵をJSONで表現する標準的な形式だと理解すれば十分です。​``CryptoKey``は暗号鍵をJavaScriptオブジェクトとして表現するためのウェブ標準の型です。
 
-``importJwk()``関数はJWK形式で表現された鍵を``CryptoKey``オブジェクトに変換します。``exportJwk()``関数の逆だと理解すれば良いでしょう。
+``importJwk()``関数はJWK形式で表現された鍵を``CryptoKey``オブジェクトに変換します。​``exportJwk()``関数の逆だと理解すれば良いでしょう。
 
-さて、では再び``setActorDispatcher()``メソッドに目を向けましょう。``getActorKeyPairs()``というメソッドが使われていますが、このメソッドは名前の通りアクターの鍵ペアを返します。アクターの鍵ペアは、直前に見た``setKeyPairsDispatcher()``メソッドで読み込まれたまさにその鍵ペアです。我々はRSA-PKCS#1-v1.5とEd25519形式の2つの鍵ペアを読み込んだので、``getActorKeyPairs()``メソッドは2つの鍵ペアの配列を返します。配列の各要素は鍵ペアを様々な形式で表現したオブジェクトですが、次のような形をしています：
+さて、​では再び``setActorDispatcher()``メソッドに目を向けましょう。​``getActorKeyPairs()``というメソッドが使われていますが、​このメソッドは名前の通りアクターの鍵ペアを返します。​アクターの鍵ペアは、​直前に見た``setKeyPairsDispatcher()``メソッドで読み込まれたまさにその鍵ペアです。​我々はRSA-PKCS#1-v1.5とEd25519形式の2つの鍵ペアを読み込んだので、​``getActorKeyPairs()``メソッドは2つの鍵ペアの配列を返します。​配列の各要素は鍵ペアを様々な形式で表現したオブジェクトですが、​次のような形をしています：
 
 [source,typescript]
 ----
@@ -1135,25 +1135,25 @@ interface ActorKeyPair {
 <4> 公開鍵の別の形式
 <5> 公開鍵のさらに別の形式
 
-``CryptoKey``と``CryptographicKey``と``Multikey``がそれぞれどう違うのか、なぜこのように複数の形式が必要なのかは、ここで説明するには複雑すぎます。ただ、現時点では``Person``オブジェクトを初期化する際に``publicKey``属性は``CryptographicKey``形式を受け取り、``assertionMethods``属性は``Multikey[]``（``Multikey``の配列をTypeScriptでこのように表記）形式を受け取るということだけ覚えておきましょう。
+``CryptoKey``と``CryptographicKey``と``Multikey``がそれぞれどう違うのか、​なぜこのように複数の形式が必要なのかは、​ここで説明するには複雑すぎます。​ただ、​現時点では``Person``オブジェクトを初期化する際に``publicKey``属性は``CryptographicKey``形式を受け取り、​``assertionMethods``属性は``Multikey[]``（``Multikey``の配列をTypeScriptでこのように表記）形式を受け取るということだけ覚えておきましょう。
 
-ところで、``Person``オブジェクトには公開鍵を持つ属性が``publicKey``と``assertionMethods``の2つもあるのはなぜでしょうか？ActivityPubには元々``publicKey``属性しかありませんでしたが、後から複数の鍵を登録できるように``assertionMethods``属性が追加されました。先ほどRSA-PKCS#1-v1.5形式とEd25519形式の鍵を両方生成したのと同じような理由で、様々なソフトウェアとの互換性のために両方の属性を設定しているのです。よく見ると、レガシーな属性である``publicKey``にはレガシーな鍵形式であるRSA-PKCS#1-v1.5鍵のみを登録していることがわかります。（配列の最初の項目にRSA-PKCS#1-v1.5鍵ペアが、2番目の項目にEd25519鍵ペアが入ります）
+ところで、​``Person``オブジェクトには公開鍵を持つ属性が``publicKey``と``assertionMethods``の2つもあるのはなぜでしょうか？ActivityPubには元々``publicKey``属性しかありませんでしたが、​後から複数の鍵を登録できるように``assertionMethods``属性が追加されました。​先ほどRSA-PKCS#1-v1.5形式とEd25519形式の鍵を両方生成したのと同じような理由で、​様々なソフトウェアとの互換性のために両方の属性を設定しているのです。​よく見ると、​レガシーな属性である``publicKey``にはレガシーな鍵形式であるRSA-PKCS#1-v1.5鍵のみを登録していることがわかります。​（配列の最初の項目にRSA-PKCS#1-v1.5鍵ペアが、​2番目の項目にEd25519鍵ペアが入ります）
 
 [TIP]
 ====
-実は``publicKey``属性も複数の鍵を含めることはできます。しかし、多くのソフトウェアが既に``publicKey``属性には単一の鍵しか入らないという前提で実装されているため、誤動作することが多いのです。これを避けるために``assertionMethods``という新しい属性が提案されたのです。
+実は``publicKey``属性も複数の鍵を含めることはできます。​しかし、​多くのソフトウェアが既に``publicKey``属性には単一の鍵しか入らないという前提で実装されているため、​誤動作することが多いのです。​これを避けるために``assertionMethods``という新しい属性が提案されたのです。
 
 これに関して興味が湧いた方はlink:https://w3id.org/fep/521a[FEP-521a]文書を参照してください。
 ====
 
 === テスト
 
-さて、アクターオブジェクトに暗号鍵を登録したので、うまく動作するか確認しましょう。次のコマンドでアクターを照会します。
+さて、​アクターオブジェクトに暗号鍵を登録したので、​うまく動作するか確認しましょう。​次のコマンドでアクターを照会します。
 
 [source,console]
 fedify lookup http://localhost:8000/users/johndoe
 
-正常に動作すれば、以下のような結果が出力されます：
+正常に動作すれば、​以下のような結果が出力されます：
 
 [listing]
 ----
@@ -1210,7 +1210,7 @@ Person {
 }
 ----
 
-``Person``オブジェクトの``publicKey``属性にRSA-PKCS#1-v1.5形式の``CryptographicKey``オブジェクトが1つ、``assertionMethods``属性にRSA-PKCS#1-v1.5形式とEd25519形式の``Multikey``オブジェクトが2つ入っていることが確認できます。
+``Person``オブジェクトの``publicKey``属性にRSA-PKCS#1-v1.5形式の``CryptographicKey``オブジェクトが1つ、​``assertionMethods``属性にRSA-PKCS#1-v1.5形式とEd25519形式の``Multikey``オブジェクトが2つ入っていることが確認できます。
 
 == Mastodonとの連携
 
@@ -1218,14 +1218,14 @@ Person {
 
 === 公開インターネットに露出
 
-残念ながら、現在のサーバーはローカルでのみアクセス可能です。しかし、コードを修正するたびにどこかにデプロイしてテストするのは不便です。デプロイせずにすぐにローカルサーバーをインターネットに公開してテストできれば良いでしょう。
+残念ながら、​現在のサーバーはローカルでのみアクセス可能です。​しかし、​コードを修正するたびにどこかにデプロイしてテストするのは不便です。​デプロイせずにすぐにローカルサーバーをインターネットに公開してテストできれば良いでしょう。
 
-ここで、``fedify tunnel``がそのような場合に使用するコマンドです。ターミナルで新しいタブを開き、このコマンドの後にローカルサーバーのポート番号を入力します：
+ここで、​``fedify tunnel``がそのような場合に使用するコマンドです。​ターミナルで新しいタブを開き、​このコマンドの後にローカルサーバーのポート番号を入力します：
 
 [source,console]
 $ fedify tunnel 8000
 
-そうすると、一度使って捨てるドメイン名を作成し、ローカルサーバーに中継します。外部からもアクセス可能なURLが出力されます：
+そうすると、​一度使って捨てるドメイン名を作成し、​ローカルサーバーに中継します。​外部からもアクセス可能なURLが出力されます：
 
 [listing]
 ----
@@ -1236,30 +1236,30 @@ https://temp-address.serveo.net/
 Press ^C to close the tunnel.
 ----
 
-もちろん、皆さんには上記のURLとは異なる皆さん独自のユニークなURLが出力されているはずです。ウェブブラウザで<https://temp-address.serveo.net/users/johndoe>（皆さんの固有の一時ドメインに置き換えてください）を開いて、きちんとアクセスできるか確認できます：
+もちろん、​皆さんには上記のURLとは異なる皆さん独自のユニークなURLが出力されているはずです。​ウェブブラウザで<https://temp-address.serveo.net/users/johndoe>（皆さんの固有の一時ドメインに置き換えてください）を開いて、​きちんとアクセスできるか確認できます：
 
 .公開インターネットに露出されたプロフィールページ
 image::profile-page-2.png[公開インターネットに露出されたプロフィールページ]
 
-上記のウェブページに表示されている皆さんのフェディバースハンドルをコピーした後、Mastodonに入って左上にある検索ボックスに貼り付けて検索してみてください：
+上記のウェブページに表示されている皆さんのフェディバースハンドルをコピーした後、​Mastodonに入って左上にある検索ボックスに貼り付けて検索してみてください：
 
 .Mastodonでフェディバースハンドルで検索した結果
 image::search-results.png[Mastodonでフェディバースハンドルで検索した結果]
 
-上記のように検索結果に我々が作成したアクターが表示されれば正常です。検索結果でアクターの名前をクリックしてプロフィールページに入ることもできます：
+上記のように検索結果に我々が作成したアクターが表示されれば正常です。​検索結果でアクターの名前をクリックしてプロフィールページに入ることもできます：
 
 .Mastodonで見るアクターのプロフィール
 image::remote-profile.png[Mastodonで見るアクターのプロフィール]
 
-しかし、ここまでです。まだフォローはできないので試さないでください！他のサーバーから我々が作成したアクターをフォローできるようにするには、インボックスを実装する必要があります。
+しかし、​ここまでです。​まだフォローはできないので試さないでください！他のサーバーから我々が作成したアクターをフォローできるようにするには、​インボックスを実装する必要があります。
 
-NOTE: ``fedify tunnel``コマンドは、しばらく使わないと自動的に接続が切断されます。その場合は、kbd:[Ctrl+C]キーを押して終了させ、``fedify tunnel 8000``コマンドを再入力して新しい接続を結ぶ必要があります。
+NOTE: ``fedify tunnel``コマンドは、​しばらく使わないと自動的に接続が切断されます。​その場合は、​kbd:[Ctrl+C]キーを押して終了させ、​``fedify tunnel 8000``コマンドを再入力して新しい接続を結ぶ必要があります。
 
 == インボックス
 
-ActivityPubにおいて、インボックス（inbox）はアクターが他のアクターからアクティビティを受け取るエンドポイントです。すべてのアクターは自身のインボックスを持っており、これはHTTP ``POST``リクエストを通じてアクティビティを受け取ることができるURLです。他のアクターがフォローリクエストを送ったり、投稿を作成したり、コメントを追加したりなどの相互作用を行う際、該当するアクティビティは受信者のインボックスに届けられます。サーバーはインボックスに入ってきたアクティビティを処理し、適切に応答することで他のアクターと通信し、連合ネットワークの一部として機能するようになります。
+ActivityPubにおいて、​インボックス（inbox）はアクターが他のアクターからアクティビティを受け取るエンドポイントです。​すべてのアクターは自身のインボックスを持っており、​これはHTTP ``POST``リクエストを通じてアクティビティを受け取ることができるURLです。​他のアクターがフォローリクエストを送ったり、​投稿を作成したり、​コメントを追加したりなどの相互作用を行う際、​該当するアクティビティは受信者のインボックスに届けられます。​サーバーはインボックスに入ってきたアクティビティを処理し、​適切に応答することで他のアクターと通信し、​連合ネットワークの一部として機能するようになります。
 
-インボックスは様々な種類のアクティビティを受信できますが、今はフォローリクエストを受け取ることから実装を始めましょう。
+インボックスは様々な種類のアクティビティを受信できますが、​今はフォローリクエストを受け取ることから実装を始めましょう。
 
 === テーブルの作成
 
@@ -1281,7 +1281,7 @@ CREATE TABLE IF NOT EXISTS follows (
 [source,console]
 $ sqlite3 microblog.sqlite3 < src/schema.sql
 
-__src/schema.ts__ファイルを開き、``follows``テーブルに保存されるレコードをJavaScriptで表現するための型も定義します：
+__src/schema.ts__ファイルを開き、​``follows``テーブルに保存されるレコードをJavaScriptで表現するための型も定義します：
 
 [source,typescript]
 ----
@@ -1294,12 +1294,12 @@ export interface Follow {
 
 === ``Follow``アクティビティの受信
 
-これでインボックスを実装する番です。実は、すでに__src/federation.ts__ファイルに次のようなコードを書いていました：
+これでインボックスを実装する番です。​実は、​すでに__src/federation.ts__ファイルに次のようなコードを書いていました：
 
 [source,typescript]
 federation.setInboxListeners("/users/{identifier}/inbox", "/inbox");
 
-上記のコードを修正する前に、Fedifyが提供する``Accept``および``Follow``クラスと``getActorHandle()``関数を``import``します：
+上記のコードを修正する前に、​Fedifyが提供する``Accept``および``Follow``クラスと``getActorHandle()``関数を``import``します：
 
 [source,typescript,highlight=2,4,9]
 ----
@@ -1361,7 +1361,7 @@ federation
     const followerId = db
       .prepare<unknown[], Actor>(
         `
-        -- フォロワーアクターレコードを新規追加するか、既にあれば更新
+        -- フォロワーアクターレコードを新規追加するか、​既にあれば更新
         INSERT INTO actors (uri, handle, name, inbox_url, shared_inbox_url, url)
         VALUES (?, ?, ?, ?, ?, ?)
         ON CONFLICT (uri) DO UPDATE SET
@@ -1395,50 +1395,50 @@ federation
   });
 ----
 
-さて、コードをじっくり見てみましょう。``on()``メソッドは特定の種類のアクティビティが受信された時に取るべき行動を定義します。ここでは、フォローリクエストを意味する``Follow``アクティビティが受信された時にデータベースにフォロワー情報を記録した後、フォローリクエストを送ったアクターに対して承諾を意味する``Accept(Follow)``アクティビティを返信として送るコードを作成しました。
+さて、​コードをじっくり見てみましょう。​``on()``メソッドは特定の種類のアクティビティが受信された時に取るべき行動を定義します。​ここでは、​フォローリクエストを意味する``Follow``アクティビティが受信された時にデータベースにフォロワー情報を記録した後、​フォローリクエストを送ったアクターに対して承諾を意味する``Accept(Follow)``アクティビティを返信として送るコードを作成しました。
 
-``follow.objectId``にはフォロー対象のアクターのURIが入っているはずです。``parseUri()``メソッドを通じて、この中に入っているURIが我々が作成したアクターを指しているかを確認します。
+``follow.objectId``にはフォロー対象のアクターのURIが入っているはずです。​``parseUri()``メソッドを通じて、​この中に入っているURIが我々が作成したアクターを指しているかを確認します。
 
 ``getActorHandle()``関数は与えられたアクターオブジェクトからフェディバースハンドルを取得して文字列を返します。
 
-フォローリクエストを送ったアクターに関する情報が``actors``テーブルにまだない場合は、まずレコードを追加します。すでにレコードがある場合は最新のデータで更新します。その後、``follows``テーブルにフォロワーを追加します。
+フォローリクエストを送ったアクターに関する情報が``actors``テーブルにまだない場合は、​まずレコードを追加します。​すでにレコードがある場合は最新のデータで更新します。​その後、​``follows``テーブルにフォロワーを追加します。
 
-データベースへの記録が完了すると、``sendActivity()``メソッドを使ってアクティビティを送ったアクターに``Accept(Follow)``アクティビティを返信として送ります。第一パラメータに送信者、第二パラメータに受信者、第三パラメータに送信するアクティビティオブジェクトを受け取ります。
+データベースへの記録が完了すると、​``sendActivity()``メソッドを使ってアクティビティを送ったアクターに``Accept(Follow)``アクティビティを返信として送ります。​第一パラメータに送信者、​第二パラメータに受信者、​第三パラメータに送信するアクティビティオブジェクトを受け取ります。
 
 === ActivityPub.Academy
 
-さて、それではフォローリクエストが正しく受信されるか確認しましょう。
+さて、​それではフォローリクエストが正しく受信されるか確認しましょう。
 
-通常のMastodonサーバーでテストしても問題ありませんが、アクティビティがどのように行き来するか具体的に確認できるlink:https://activitypub.academy/[ActivityPub.Academy]サーバーを利用することにします。ActivityPub.Academyは教育およびデバッグ目的の特殊なMastodonサーバーで、クリック一つで簡単に一時的なアカウントを作成できます。
+通常のMastodonサーバーでテストしても問題ありませんが、​アクティビティがどのように行き来するか具体的に確認できるlink:https://activitypub.academy/[ActivityPub.Academy]サーバーを利用することにします。​ActivityPub.Academyは教育およびデバッグ目的の特殊なMastodonサーバーで、​クリック一つで簡単に一時的なアカウントを作成できます。
 
 .ActivityPub.Academyの最初のページ
 image::academy.jpg[ActivityPub.Academyの最初のページ]
 
-プライバシーポリシーに同意した後、btn:[登録する]ボタンを押して新しいアカウントを作成します。作成されたアカウントはランダムに生成された名前とハンドルを持ち、一日が経過すると自動的に消えます。代わりに、アカウントは何度でも新しく作成できます。
+プライバシーポリシーに同意した後、​btn:[登録する]ボタンを押して新しいアカウントを作成します。​作成されたアカウントはランダムに生成された名前とハンドルを持ち、​一日が経過すると自動的に消えます。​代わりに、​アカウントは何度でも新しく作成できます。
 
-ログインが完了したら、画面の左上にある検索ボックスに我々が作成したアクターのハンドルを貼り付けて検索します：
+ログインが完了したら、​画面の左上にある検索ボックスに我々が作成したアクターのハンドルを貼り付けて検索します：
 
 .ActivityPub.Academyで我々が作成したアクターのハンドルで検索した結果
 image::academy-search-results.png[ActivityPub.Academyで我々が作成したアクターのハンドルで検索した結果]
 
-我々が作成したアクターが検索結果に表示されたら、右側にあるフォローボタンを押してフォローリクエストを送ります。そして右側のメニューからbtn:[Activity Log]をクリックします：
+我々が作成したアクターが検索結果に表示されたら、​右側にあるフォローボタンを押してフォローリクエストを送ります。​そして右側のメニューからbtn:[Activity Log]をクリックします：
 
 .ActivityPub.AcademyのActivity Log
 image::activity-log.png[ActivityPub.AcademyのActivity Log]
 
-すると、先ほどフォローボタンを押したことでActivityPub.Academyサーバーから我々が作成したアクターのインボックスに``Follow``アクティビティが送信されたという表示が見えます。右下のbtn:[show source]をクリックするとアクティビティの内容まで見ることができます：
+すると、​先ほどフォローボタンを押したことでActivityPub.Academyサーバーから我々が作成したアクターのインボックスに``Follow``アクティビティが送信されたという表示が見えます。​右下のbtn:[show source]をクリックするとアクティビティの内容まで見ることができます：
 
 .Activity Logでbtn:[show source]を押した画面
 image::activity-log-2.png[Activity Logでshow sourceを押した画面]
 
 === テスト
 
-アクティビティがきちんと送信されたことを確認したので、実際に我々が書いたインボックスコードがうまく動作したか確認する番です。まず``follows``テーブルにレコードがきちんと作成されたか見てみましょう：
+アクティビティがきちんと送信されたことを確認したので、​実際に我々が書いたインボックスコードがうまく動作したか確認する番です。​まず``follows``テーブルにレコードがきちんと作成されたか見てみましょう：
 
 [source,console]
 $ echo "SELECT * FROM follows;" | sqlite3 -table microblog.sqlite3
 
-フォローリクエストがきちんと処理されていれば、次のような結果が出力されるはずです（もちろん、時刻は異なるでしょう）：
+フォローリクエストがきちんと処理されていれば、​次のような結果が出力されるはずです（もちろん、​時刻は異なるでしょう）：
 
 [cols="1,1,1"]
 |===
@@ -1469,26 +1469,26 @@ $ echo "SELECT * FROM actors WHERE id > 1;" | sqlite3 -table microblog.sqlite3
 |`2024-09-01 10:19:41`
 |===
 
-再び、ActivityPub.AcademyのActivity Logを見てみましょう。我々が作成したアクターから送られた``Accept(Follow)``アクティビティがきちんと到着していれば、以下のように表示されるはずです：
+再び、​ActivityPub.AcademyのActivity Logを見てみましょう。​我々が作成したアクターから送られた``Accept(Follow)``アクティビティがきちんと到着していれば、​以下のように表示されるはずです：
 
 .Activity Logに表示された``Accept(Follow)``アクティビティ
 image::activity-log-3.png[Activity Logに表示されたAccept(Follow)アクティビティ]
 
-さて、これで皆さんは初めてActivityPubを通じた相互作用を実装しました！
+さて、​これで皆さんは初めてActivityPubを通じた相互作用を実装しました！
 
 == フォロー解除
 
-他のサーバーのアクターが我々が作成したアクターをフォローした後、再び解除するとどうなるでしょうか？link:https://activitypub.academy/[ActivityPub.Academy]で試してみましょう。先ほどと同様に、ActivityPub.Academyの検索ボックスに我々が作成したアクターのフェディバースハンドルを入力して検索します：
+他のサーバーのアクターが我々が作成したアクターをフォローした後、​再び解除するとどうなるでしょうか？link:https://activitypub.academy/[ActivityPub.Academy]で試してみましょう。​先ほどと同様に、​ActivityPub.Academyの検索ボックスに我々が作成したアクターのフェディバースハンドルを入力して検索します：
 
 .ActivityPub.Academyの検索結果
 image::academy-search-results-2.png[ActivityPub.Academyの検索結果]
 
-よく見ると、アクター名の右側にあったフォローボタンの場所にフォロー解除（unfollow）ボタンがあります。このボタンを押してフォローを解除した後、Activity Logに入ってどのようなアクティビティが送信されるか確認してみましょう：
+よく見ると、​アクター名の右側にあったフォローボタンの場所にフォロー解除（unfollow）ボタンがあります。​このボタンを押してフォローを解除した後、​Activity Logに入ってどのようなアクティビティが送信されるか確認してみましょう：
 
 .送信された``Undo(Follow)``アクティビティが表示されているActivity Log
 image::activity-log-4.png[送信されたUndo(Follow)アクティビティが表示されているActivity Log]
 
-上のように``Undo(Follow)``アクティビティが送信されました。右下のbtn:[show source]を押すとアクティビティの詳細な内容を見ることができます：
+上のように``Undo(Follow)``アクティビティが送信されました。​右下のbtn:[show source]を押すとアクティビティの詳細な内容を見ることができます：
 
 [source,json]
 ----
@@ -1506,11 +1506,11 @@ image::activity-log-4.png[送信されたUndo(Follow)アクティビティが表
 }
 ----
 
-上のJSONオブジェクトを見ると、``Undo(Follow)``アクティビティの中に先ほどインボックスに入ってきた``Follow``アクティビティが含まれていることがわかります。しかし、インボックスで``Undo(Follow)``アクティビティを受信した時の動作を何も定義していないため、何も起こりませんでした。
+上のJSONオブジェクトを見ると、​``Undo(Follow)``アクティビティの中に先ほどインボックスに入ってきた``Follow``アクティビティが含まれていることがわかります。​しかし、​インボックスで``Undo(Follow)``アクティビティを受信した時の動作を何も定義していないため、​何も起こりませんでした。
 
 === ``Undo(Follow)``アクティビティの受信
 
-フォロー解除を実装するために__src/federation.ts__ファイルを開き、Fedifyが提供する``Undo``クラスを``import``します：
+フォロー解除を実装するために__src/federation.ts__ファイルを開き、​Fedifyが提供する``Undo``クラスを``import``します：
 
 [source,typescript,highlight=6]
 ----
@@ -1557,23 +1557,23 @@ federation
   });
 ----
 
-今回はフォローリクエストを処理する時よりもコードが短くなっています。``Undo(Follow)``アクティビティの中に入っているのが``Follow``アクティビティかどうか確認した後、``parseUri()``メソッドを使って取り消そうとしている``Follow``アクティビティのフォロー対象が我々が作成したアクターかどうか確認し、``follows``テーブルから該当するレコードを削除します。
+今回はフォローリクエストを処理する時よりもコードが短くなっています。​``Undo(Follow)``アクティビティの中に入っているのが``Follow``アクティビティかどうか確認した後、​``parseUri()``メソッドを使って取り消そうとしている``Follow``アクティビティのフォロー対象が我々が作成したアクターかどうか確認し、​``follows``テーブルから該当するレコードを削除します。
 
 === テスト
 
-先ほどlink:https://activitypub.academy/[ActivityPub.Academy]でフォロー解除ボタンを押してしまったので、もう一度フォロー解除をすることはできません。仕方がないので再度フォローした後、フォロー解除してテストする必要があります。しかしその前に、``follows``テーブルを空にする必要があります。そうしないと、フォローリクエストが来た時に既にレコードが存在するためエラーが発生してしまいます。
+先ほどlink:https://activitypub.academy/[ActivityPub.Academy]でフォロー解除ボタンを押してしまったので、​もう一度フォロー解除をすることはできません。​仕方がないので再度フォローした後、​フォロー解除してテストする必要があります。​しかしその前に、​``follows``テーブルを空にする必要があります。​そうしないと、​フォローリクエストが来た時に既にレコードが存在するためエラーが発生してしまいます。
 
 ``sqlite3``コマンドを使用して``follows``テーブルを空にしましょう：
 
 [source,console]
 $ echo "DELETE FROM follows;" | sqlite3 microblog.sqlite3
 
-そして再度フォローボタンを押した後、データベースを確認します：
+そして再度フォローボタンを押した後、​データベースを確認します：
 
 [source,console]
 $ echo "SELECT * FROM follows;" | sqlite3 -table microblog.sqlite3
 
-フォローリクエストがきちんと処理されていれば、次のような結果が出力されるはずです：
+フォローリクエストがきちんと処理されていれば、​次のような結果が出力されるはずです：
 
 [cols="1,1,1"]
 |===
@@ -1584,12 +1584,12 @@ $ echo "SELECT * FROM follows;" | sqlite3 -table microblog.sqlite3
 | `2024-09-02 01:05:17`
 |===
 
-そして再度フォロー解除ボタンを押した後、データベースをもう一度確認します：
+そして再度フォロー解除ボタンを押した後、​データベースをもう一度確認します：
 
 [source,console]
 $ echo "SELECT count(*) FROM follows;" | sqlite3 -table microblog.sqlite3
 
-フォロー解除リクエストがきちんと処理されていれば、レコードが消えているので次のような結果が出力されるはずです：
+フォロー解除リクエストがきちんと処理されていれば、​レコードが消えているので次のような結果が出力されるはずです：
 
 [cols="1"]
 |===
@@ -1600,9 +1600,9 @@ $ echo "SELECT count(*) FROM follows;" | sqlite3 -table microblog.sqlite3
 
 == フォロワーリスト
 
-毎回フォロワーリストを``sqlite3``コマンドで見るのは面倒なので、ウェブでフォロワーリストを見られるようにしましょう。
+毎回フォロワーリストを``sqlite3``コマンドで見るのは面倒なので、​ウェブでフォロワーリストを見られるようにしましょう。
 
-まず__src/views.tsx__ファイルに新しいコンポーネントを追加することから始めます。``Actor``型を``import``してください：
+まず__src/views.tsx__ファイルに新しいコンポーネントを追加することから始めます。​``Actor``型を``import``してください：
 
 [source,typescript]
 import type { Actor } from "./schema.ts";
@@ -1653,9 +1653,9 @@ export const ActorLink: FC<ActorLinkProps> = ({ actor }) => {
 };
 ----
 
-``<ActorLink>``コンポーネントは1つのアクターを表現するのに使用され、``<FollowerList>``コンポーネントは``<ActorList>``コンポーネントを使用してフォロワーリストを表現するのに使用されます。ご覧の通り、JSXには条件文や繰り返し文がないため、三項演算子と``Array.map()``メソッドを使用しています。
+``<ActorLink>``コンポーネントは1つのアクターを表現するのに使用され、​``<FollowerList>``コンポーネントは``<ActorList>``コンポーネントを使用してフォロワーリストを表現するのに使用されます。​ご覧の通り、​JSXには条件文や繰り返し文がないため、​三項演算子と``Array.map()``メソッドを使用しています。
 
-それではフォロワーリストを表示するエンドポイントを作成しましょう。__src/app.tsx__ファイルを開いて``<FollowerList>``コンポーネントを``import``します：
+それではフォロワーリストを表示するエンドポイントを作成しましょう。​__src/app.tsx__ファイルを開いて``<FollowerList>``コンポーネントを``import``します：
 
 [source,typescript]
 import { FollowerList, Layout, Profile, SetupForm } from "./views.tsx";
@@ -1686,12 +1686,12 @@ app.get("/users/:username/followers", async (c) => {
 });
 ----
 
-それでは、うまく表示されるか確認してみましょう。フォロワーがいるはずなので、``fedify tunnel``を起動した状態で他のMastodonサーバーやlink:https://activitypub.academy/[ActivityPub.Academy]から我々が作成したアクターをフォローしましょう。フォローリクエストが承認された後、ウェブブラウザで<http://localhost:8000/users/johndoe/followers>ページを開くと、以下のように表示されるはずです：
+それでは、​うまく表示されるか確認してみましょう。​フォロワーがいるはずなので、​``fedify tunnel``を起動した状態で他のMastodonサーバーやlink:https://activitypub.academy/[ActivityPub.Academy]から我々が作成したアクターをフォローしましょう。​フォローリクエストが承認された後、​ウェブブラウザで<http://localhost:8000/users/johndoe/followers>ページを開くと、​以下のように表示されるはずです：
 
 .フォロワーリストページ
 image::followers-list.png[フォロワーリストページ]
 
-フォロワーリストを作成したので、プロフィールページでフォロワー数も表示すると良いでしょう。__src/views.tsx__ファイルを再度開き、``<Profile>``コンポーネントを以下のように修正します：
+フォロワーリストを作成したので、​プロフィールページでフォロワー数も表示すると良いでしょう。​__src/views.tsx__ファイルを再度開き、​``<Profile>``コンポーネントを以下のように修正します：
 
 [source,tsx,highlight=3,5,10,12,20..23]
 ----
@@ -1724,9 +1724,9 @@ export const Profile: FC<ProfileProps> = ({
 );
 ----
 
-``ProfileProps``には2つのプロップが追加されました。``followers``は文字通りフォロワー数を含むプロップです。``username``はフォロワーリストへのリンクを張るためにURLに入れるユーザー名を受け取ります。
+``ProfileProps``には2つのプロップが追加されました。​``followers``は文字通りフォロワー数を含むプロップです。​``username``はフォロワーリストへのリンクを張るためにURLに入れるユーザー名を受け取ります。
 
-それでは再び__src/app.tsx__ファイルに戻り、``GET /users/{username}``リクエストハンドラを次のように修正します：
+それでは再び__src/app.tsx__ファイルに戻り、​``GET /users/{username}``リクエストハンドラを次のように修正します：
 
 [source,tsx,highlight=5..15,21,23]
 ----
@@ -1759,21 +1759,21 @@ app.get("/users/:username", async (c) => {
 });
 ----
 
-データベース内の``follows``テーブルのレコード数を数えるSQLが追加されました。さて、それでは変更されたプロフィールページを確認してみましょう。ウェブブラウザで<http://localhost:8000/users/johndoe>ページを開くと以下のように表示されるはずです：
+データベース内の``follows``テーブルのレコード数を数えるSQLが追加されました。​さて、​それでは変更されたプロフィールページを確認してみましょう。​ウェブブラウザで<http://localhost:8000/users/johndoe>ページを開くと以下のように表示されるはずです：
 
 .変更されたプロフィールページ
 image::profile-page-3.png[変更されたプロフィールページ]
 
 == フォロワーコレクション
 
-しかし、一つ問題があります。ActivityPub.Academy以外の他のMastodonサーバーから我々が作成したアクターを照会してみましょう。（照会方法はもうご存知ですよね？公開インターネットに露出された状態で、アクターのハンドルをMastodonの検索ボックスに入力すれば良いのです）Mastodonで我々が作成したアクターのプロフィールを見ると、おそらく奇妙な点に気づくでしょう：
+しかし、​一つ問題があります。​ActivityPub.Academy以外の他のMastodonサーバーから我々が作成したアクターを照会してみましょう。​（照会方法はもうご存知ですよね？公開インターネットに露出された状態で、​アクターのハンドルをMastodonの検索ボックスに入力すれば良いのです）Mastodonで我々が作成したアクターのプロフィールを見ると、​おそらく奇妙な点に気づくでしょう：
 
 .Mastodonで照会した我々が作成したアクターのプロフィール
 image::remote-profile-2.png[Mastodonで照会した我々が作成したアクターのプロフィール]
 
-フォロワー数が0と表示されているのです。これは、我々が作成したアクターがフォロワーリストをActivityPubを通じて公開していないためです。ActivityPubでフォロワーリストを公開するには、フォロワーコレクションを定義する必要があります。
+フォロワー数が0と表示されているのです。​これは、​我々が作成したアクターがフォロワーリストをActivityPubを通じて公開していないためです。​ActivityPubでフォロワーリストを公開するには、​フォロワーコレクションを定義する必要があります。
 
-__src/federation.ts__ファイルを開いて、Fedifyが提供する``Recipient``型を``import``します：
+__src/federation.ts__ファイルを開いて、​Fedifyが提供する``Recipient``型を``import``します：
 
 [source,typescript,highlight=12]
 ----
@@ -1840,7 +1840,7 @@ federation
   });
 ----
 
-``setFollowersDispatcher()``メソッドでは、``GET /users/{identifier}/followers``リクエストが来た時に応答するフォロワーコレクションオブジェクトを作成します。SQLが少し長くなっていますが、整理すると``identifier``パラメータで入ってきたユーザー名をフォローしているアクターのリストを取得しているのです。``items``には``Recipient``オブジェクトを含めますが、``Recipient``型は次のような形をしています：
+``setFollowersDispatcher()``メソッドでは、​``GET /users/{identifier}/followers``リクエストが来た時に応答するフォロワーコレクションオブジェクトを作成します。​SQLが少し長くなっていますが、​整理すると``identifier``パラメータで入ってきたユーザー名をフォローしているアクターのリストを取得しているのです。​``items``には``Recipient``オブジェクトを含めますが、​``Recipient``型は次のような形をしています：
 
 [source,typescript]
 ----
@@ -1852,15 +1852,15 @@ export interface Recipient {
   } | null;
 }
 ----
-<1> ``id``属性にはアクターの一意なIRIが入り、
+<1> ``id``属性にはアクターの一意なIRIが入り、​
 <2> ``inboxId``にはアクターの個人インボックスURLが入ります。
 <3> ``endpoints.sharedInbox``にはアクターの共有インボックスURLが入ります。
 
-我々は``actors``テーブルにそれらの情報をすべて含んでいるので、その情報で``items``配列を埋めることができます。
+我々は``actors``テーブルにそれらの情報をすべて含んでいるので、​その情報で``items``配列を埋めることができます。
 
-``setCounter()``メソッドではフォロワーコレクションの全体数量を求めます。ここでもSQLが少し複雑ですが、要約すると``identifier``パラメータで入ってきたユーザー名をフォローしているアクターの数を求めているのです。
+``setCounter()``メソッドではフォロワーコレクションの全体数量を求めます。​ここでもSQLが少し複雑ですが、​要約すると``identifier``パラメータで入ってきたユーザー名をフォローしているアクターの数を求めているのです。
 
-それではフォロワーコレクションがうまく動作するか確認するために、``fedify lookup``コマンドを使用しましょう：
+それではフォロワーコレクションがうまく動作するか確認するために、​``fedify lookup``コマンドを使用しましょう：
 
 [source,console]
 $ fedify lookup http://localhost:8000/users/johndoe/followers
@@ -1876,7 +1876,7 @@ OrderedCollection {
 }
 ----
 
-しかし、このようにフォロワーコレクションを作成しただけでは、他のサーバーがフォロワーコレクションがどこにあるのか知ることができません。そのため、アクターディスパッチャーでフォロワーコレクションにリンクを張る必要があります：
+しかし、​このようにフォロワーコレクションを作成しただけでは、​他のサーバーがフォロワーコレクションがどこにあるのか知ることができません。​そのため、​アクターディスパッチャーでフォロワーコレクションにリンクを張る必要があります：
 
 [source,typescript,highlight=6]
 ----
@@ -1908,30 +1908,30 @@ Person {
 }
 ----
 
-それでは再びMastodonで我々が作成したアクターを照会してみましょう。しかし、その結果は少し落胆させられるかもしれません：
+それでは再びMastodonで我々が作成したアクターを照会してみましょう。​しかし、​その結果は少し落胆させられるかもしれません：
 
 .Mastodonで再度照会した我々が作成したアクターのプロフィール
 image::remote-profile-2.png[Mastodonで再度照会した我々が作成したアクターのプロフィール]
 
-フォロワー数は依然として0と表示されています。これは、Mastodonが他のサーバーのアクター情報をキャッシュ（cache）しているためです。これを更新する方法はありますが、kbd:[F5]キーを押すように簡単ではありません：
+フォロワー数は依然として0と表示されています。​これは、​Mastodonが他のサーバーのアクター情報をキャッシュ（cache）しているためです。​これを更新する方法はありますが、​kbd:[F5]キーを押すように簡単ではありません：
 
-- 一つの方法は、一週間待つことです。Mastodonは他のサーバーのアクター情報を含むキャッシュを最後の更新から7日が経過すると削除するからです。
+- 一つの方法は、​一週間待つことです。​Mastodonは他のサーバーのアクター情報を含むキャッシュを最後の更新から7日が経過すると削除するからです。
 
-- もう一つの方法は、``Update``アクティビティを送信することですが、これには面倒なコーディングが必要です。
+- もう一つの方法は、​``Update``アクティビティを送信することですが、​これには面倒なコーディングが必要です。
 
-- あるいは、まだキャッシュされていない他のMastodonサーバーで照会してみるのも一つの方法でしょう。
+- あるいは、​まだキャッシュされていない他のMastodonサーバーで照会してみるのも一つの方法でしょう。
 
-- 最後の方法は、``fedify tunnel``を一度終了して再起動し、新しい一時ドメインを割り当てることです。
+- 最後の方法は、​``fedify tunnel``を一度終了して再起動し、​新しい一時ドメインを割り当てることです。
 
-皆さんが他のMastodonサーバーで正確なフォロワー数が表示されるのを直接確認したい場合は、私が列挙した方法のいずれかを試してみてください。
+皆さんが他のMastodonサーバーで正確なフォロワー数が表示されるのを直接確認したい場合は、​私が列挙した方法のいずれかを試してみてください。
 
 == 投稿
 
-さて、いよいよ投稿を実装する時が来ました。一般的なブログとは異なり、我々が作成するマイクロブログは他のサーバーで作成された投稿も保存できる必要があります。これを念頭に置いて設計しましょう。
+さて、​いよいよ投稿を実装する時が来ました。​一般的なブログとは異なり、​我々が作成するマイクロブログは他のサーバーで作成された投稿も保存できる必要があります。​これを念頭に置いて設計しましょう。
 
 === テーブルの作成
 
-まず``posts``テーブルを作成しましょう。__src/schema.sql__ファイルを開いて以下のSQLを追加します：
+まず``posts``テーブルを作成しましょう。​__src/schema.sql__ファイルを開いて以下のSQLを追加します：
 
 [source,sql]
 ----
@@ -1945,10 +1945,10 @@ CREATE TABLE IF NOT EXISTS posts (
 );
 ----
 <1> ``id``カラムはテーブルの主キーです。
-<2> ``uri``カラムは投稿の一意なURIを含みます。先ほど述べたように、ActivityPubオブジェクトはすべて一意なURIを持つ必要があるためです。
+<2> ``uri``カラムは投稿の一意なURIを含みます。​先ほど述べたように、​ActivityPubオブジェクトはすべて一意なURIを持つ必要があるためです。
 <3> ``actor_id``カラムは投稿を作成したアクターを指します。
 <4> ``content``カラムには投稿の内容を含みます。
-<5> ``url``カラムにはウェブブラウザで投稿を表示するURLを含みます。ActivityPubオブジェクトのURIとウェブブラウザに表示されるページのURLが一致する場合もありますが、そうでない場合もあるため、別のカラムが必要です。ただし、空である可能性もあります。
+<5> ``url``カラムにはウェブブラウザで投稿を表示するURLを含みます。​ActivityPubオブジェクトのURIとウェブブラウザに表示されるページのURLが一致する場合もありますが、​そうでない場合もあるため、​別のカラムが必要です。​ただし、​空である可能性もあります。
 <6> ``created``カラムには投稿作成時刻を含みます。
 
 SQLを実行して``posts``テーブルを作成しましょう：
@@ -1972,7 +1972,7 @@ export interface Post {
 
 === トップページ
 
-投稿を作成するには、どこかにフォームが必要ですね。そういえば、まだトップページもきちんと作成していませんでした。トップページに投稿作成フォームを追加しましょう。
+投稿を作成するには、​どこかにフォームが必要ですね。​そういえば、​まだトップページもきちんと作成していませんでした。​トップページに投稿作成フォームを追加しましょう。
 
 まず__src/views.tsx__ファイルを開いて``User``型を``import``します：
 
@@ -2042,14 +2042,14 @@ app.get("/", (c) => {
 });
 ----
 
-ここまでできたら、トップページがうまく表示されるか確認しましょう。ウェブブラウザで<http://localhost:8000/>ページを開くと以下のように表示されるはずです：
+ここまでできたら、​トップページがうまく表示されるか確認しましょう。​ウェブブラウザで<http://localhost:8000/>ページを開くと以下のように表示されるはずです：
 
 .トップページ
 image::home.png[トップページ]
 
 === レコードの挿入
 
-投稿作成フォームを作成したので、実際に投稿内容を``posts``テーブルに保存するコードが必要です。
+投稿作成フォームを作成したので、​実際に投稿内容を``posts``テーブルに保存するコードが必要です。
 
 まず__src/federation.ts__ファイルを開いてFedifyが提供する``Note``クラスを``import``します：
 
@@ -2084,9 +2084,9 @@ federation.setObjectDispatcher(
 );
 ----
 
-上記のコードはまだ特に役割を果たしませんが、投稿のパーマリンク形式を決めるのに必要です。実際の実装は後でしましょう。
+上記のコードはまだ特に役割を果たしませんが、​投稿のパーマリンク形式を決めるのに必要です。​実際の実装は後でしましょう。
 
-ActivityPubでは投稿の内容をHTML形式でやり取りします。したがって、プレーンテキスト形式で入力された内容をHTML形式に変換する必要があります。その際、``<``、``>``などの文字をHTMLで表示できるように``&lt;``、``&gt;``などのHTMLエンティティに変換してくれるlink:https://github.com/wooorm/stringify-entities[stringify-entities]パッケージが必要です：
+ActivityPubでは投稿の内容をHTML形式でやり取りします。​したがって、​プレーンテキスト形式で入力された内容をHTML形式に変換する必要があります。​その際、​``<``、​``>``などの文字をHTMLで表示できるように``&lt;``、​``&gt;``などのHTMLエンティティに変換してくれるlink:https://github.com/wooorm/stringify-entities[stringify-entities]パッケージが必要です：
 
 [source,console]
 $ npm add stringify-entities
@@ -2152,19 +2152,19 @@ app.post("/users/:username/posts", async (c) => {
 });
 ----
 
-普通に``posts``テーブルにレコードを追加するコードですが、一つ特殊な部分があります。投稿を表すActivityPubオブジェクトのURIを求めるには``posts.id``が先に決まっている必要があるため、``posts.uri``カラムに``https://localhost/``という仮のURIをまず入れてレコードを追加した後、決定した``posts.id``を基に``getObjectUri()``メソッドを使用して実際のURIを求めてレコードを更新するようになっています。
+普通に``posts``テーブルにレコードを追加するコードですが、​一つ特殊な部分があります。​投稿を表すActivityPubオブジェクトのURIを求めるには``posts.id``が先に決まっている必要があるため、​``posts.uri``カラムに``https://localhost/``という仮のURIをまず入れてレコードを追加した後、​決定した``posts.id``を基に``getObjectUri()``メソッドを使用して実際のURIを求めてレコードを更新するようになっています。
 
-それではウェブブラウザで<http://localhost:8000/>ページを開いた後、投稿を作成してみましょう：
+それではウェブブラウザで<http://localhost:8000/>ページを開いた後、​投稿を作成してみましょう：
 
 .投稿作成中
 image::home-2.png[投稿作成中]
 
-btn:[Post]ボタンを押して投稿を作成すると、残念ながら``404 Not Found``エラーが発生します：
+btn:[Post]ボタンを押して投稿を作成すると、​残念ながら``404 Not Found``エラーが発生します：
 
 .404 Not Found
 image::404.png[404 Not Found]
 
-というのも、投稿パーマリンクにリダイレクトするよう実装したのに、まだ投稿ページを実装していないからです。しかし、それでも``posts``テーブルにはレコードが作成されているはずです。一度確認してみましょう：
+というのも、​投稿パーマリンクにリダイレクトするよう実装したのに、​まだ投稿ページを実装していないからです。​しかし、​それでも``posts``テーブルにはレコードが作成されているはずです。​一度確認してみましょう：
 
 [source,console]
 $ echo "SELECT * FROM posts;" | sqlite3 -table microblog.sqlite3
@@ -2185,7 +2185,7 @@ $ echo "SELECT * FROM posts;" | sqlite3 -table microblog.sqlite3
 
 === 投稿ページ
 
-投稿作成後に``404 Not Found``エラーが発生しないよう、投稿ページを実装しましょう。
+投稿作成後に``404 Not Found``エラーが発生しないよう、​投稿ページを実装しましょう。
 
 __src/views.tsx__ファイルを開いて``Post``型を``import``します：
 
@@ -2232,7 +2232,7 @@ export const PostView: FC<PostViewProps> = ({ post }) => (
 );
 ----
 
-これでデータベースから投稿データを読み込んで``<PostPage>``コンポーネントでレンダリングしましょう。__src/app.tsx__ファイルを開いて先ほど定義した``<PostPage>``コンポーネントを``import``します：
+これでデータベースから投稿データを読み込んで``<PostPage>``コンポーネントでレンダリングしましょう。​__src/app.tsx__ファイルを開いて先ほど定義した``<PostPage>``コンポーネントを``import``します：
 
 [source,typescript,highlight=5]
 ----
@@ -2295,21 +2295,21 @@ image::post-page.png[投稿ページ]
 
 === ``Note``オブジェクト・ディスパッチャー
 
-それでは、他のMastodonのサーバーで投稿を照会できるか確認してみましょう。まず、``fedify tunnel``を利用してローカルサーバーを公開インターネットに露出します。
+それでは、​他のMastodonのサーバーで投稿を照会できるか確認してみましょう。​まず、​``fedify tunnel``を利用してローカルサーバーを公開インターネットに露出します。
 
-その状態で、Mastodonの検索ボックスに記事のパーマリンクである<https://temp-address.serveo.net/users/johndoe/posts/1>（皆さんの固有の一時ドメインに置き換えてください）を入力してみます：
+その状態で、​Mastodonの検索ボックスに記事のパーマリンクである<https://temp-address.serveo.net/users/johndoe/posts/1>（皆さんの固有の一時ドメインに置き換えてください）を入力してみます：
 
 .空の検索結果
 image::search-results-2.png[空の検索結果]
 
-残念ながら、検索結果は空です。投稿をActivityPubオブジェクトの形式で公開していないからです。では、投稿をActivityPubオブジェクトで露出させてみましょう。
+残念ながら、​検索結果は空です。​投稿をActivityPubオブジェクトの形式で公開していないからです。​では、​投稿をActivityPubオブジェクトで露出させてみましょう。
 
-実装に先立ち、必要なライブラリをインストールする必要があります。Fedifyで時の表現に使用するlink:https://tc39.es/proposal-temporal/docs/[Temporal API]がまだNode.jsに組み込まれていないため、これをポリフィルするlink:https://github.com/js-temporal/temporal-polyfill[@js-temporal/polyfill]パッケージが必要です：
+実装に先立ち、​必要なライブラリをインストールする必要があります。​Fedifyで時の表現に使用するlink:https://tc39.es/proposal-temporal/docs/[Temporal API]がまだNode.jsに組み込まれていないため、​これをポリフィルするlink:https://github.com/js-temporal/temporal-polyfill[@js-temporal/polyfill]パッケージが必要です：
 
 [source,console]
 $ npm add @js-temporal/polyfill
 
-__src/federation.ts__ファイルを開き、インストールしたパッケージを``import``します：
+__src/federation.ts__ファイルを開き、​インストールしたパッケージを``import``します：
 
 [source,typescript]
 import { Temporal } from "@js-temporal/polyfill";
@@ -2341,7 +2341,7 @@ import type {
 } from "./schema.ts";
 ----
 
-マイクロブログの投稿のような短い文章は、ActivityPubでは通常``Note``として表現されます。``Note``クラスのオブジェクト・ディスパッチャーは既に空の実装を作成していました：
+マイクロブログの投稿のような短い文章は、​ActivityPubでは通常``Note``として表現されます。​``Note``クラスのオブジェクト・ディスパッチャーは既に空の実装を作成していました：
 
 [source,typescript]
 ----
@@ -2390,13 +2390,13 @@ federation.setObjectDispatcher(
 
 ``Note``オブジェクトを生成する際に設定されるプロパティ値は以下のような役割を果たします：
 
-- ``attribution``プロパティに``ctx.getActorUri(values.identifier)``を設定することで、この投稿の作成者が私たちが作成したアクターであることを示します。
+- ``attribution``プロパティに``ctx.getActorUri(values.identifier)``を設定することで、​この投稿の作成者が私たちが作成したアクターであることを示します。
 
-- ``to``プロパティに``PUBLIC_COLLECTION``を設定することで、この投稿が全体公開の投稿であることを示します。
+- ``to``プロパティに``PUBLIC_COLLECTION``を設定することで、​この投稿が全体公開の投稿であることを示します。
 
-- ``cc``プロパティに``ctx.getFollowersUri(values.identifier)``を設定することで、この投稿がフォロワーに配信されることを示しますが、これ自体には大きな意味はありません。
+- ``cc``プロパティに``ctx.getFollowersUri(values.identifier)``を設定することで、​この投稿がフォロワーに配信されることを示しますが、​これ自体には大きな意味はありません。
 
-それでは、もう一度Mastodonの検索ボックスに投稿のパーマリンク（<https://temp-address.serveo.net/users/johndoe/posts/1>、ドメイン名は置き換えてください）を入力してみましょう：
+それでは、​もう一度Mastodonの検索ボックスに投稿のパーマリンク（<https://temp-address.serveo.net/users/johndoe/posts/1>、​ドメイン名は置き換えてください）を入力してみましょう：
 
 .Mastodon検索結果に作成した投稿が表示される
 image::search-results-3.png[Mastodon検索結果に作成した投稿が表示される]
@@ -2405,14 +2405,14 @@ image::search-results-3.png[Mastodon検索結果に作成した投稿が表示�
 
 === ``Create(Note)``アクティビティの送信
 
-しかし、Mastodonで私たちが作成したアクターをフォローしても、新しく作成した投稿はMastodonのタイムラインには表示されません。なぜなら、Mastodonが新しい投稿を自動的に取得するのではなく、新しい投稿を作成した側が``Create(Note)``アクティビティを送信して、新しい投稿が作成されたことを通知する必要があるからです。
+しかし、​Mastodonで私たちが作成したアクターをフォローしても、​新しく作成した投稿はMastodonのタイムラインには表示されません。​なぜなら、​Mastodonが新しい投稿を自動的に取得するのではなく、​新しい投稿を作成した側が``Create(Note)``アクティビティを送信して、​新しい投稿が作成されたことを通知する必要があるからです。
 
-投稿作成時に``Create(Note)``アクティビティを送信するようにコードを修正しましょう。__src/app.tsx__ファイルを開き、Fedifyが提供する``Create``クラスを``import``します：
+投稿作成時に``Create(Note)``アクティビティを送信するようにコードを修正しましょう。​__src/app.tsx__ファイルを開き、​Fedifyが提供する``Create``クラスを``import``します：
 
 [source,typescript]
 import { Create, Note } from "@fedify/fedify";
 
-そして、``POST /users/{username}/posts``リクエストハンドラを次のように修正します：
+そして、​``POST /users/{username}/posts``リクエストハンドラを次のように修正します：
 
 [source,typescript,highlight=4,24,26..40]
 ----
@@ -2459,24 +2459,24 @@ app.post("/users/:username/posts", async (c) => {
 });
 ----
 
-``getObject()``メソッドは、オブジェクト・ディスパッチャーが作成するActivityPubオブジェクトを返します。ここでは``Note``オブジェクトを返すでしょう。その``Note``オブジェクトを``Create``オブジェクトを生成する際に``object``プロパティに設定します。アクティビティの受信者を示す``tos``（``to``の複数形）および``ccs``（``cc``の複数形）プロパティは、``Note``オブジェクトと同じように設定します。アクティビティの``id``は任意の一意なURIを生成して設定します。
+``getObject()``メソッドは、​オブジェクト・ディスパッチャーが作成するActivityPubオブジェクトを返します。​ここでは``Note``オブジェクトを返すでしょう。​その``Note``オブジェクトを``Create``オブジェクトを生成する際に``object``プロパティに設定します。​アクティビティの受信者を示す``tos``（``to``の複数形）および``ccs``（``cc``の複数形）プロパティは、​``Note``オブジェクトと同じように設定します。​アクティビティの``id``は任意の一意なURIを生成して設定します。
 
-TIP: アクティビティオブジェクトの``id``プロパティには、必ずしもアクセス可能なURIを設定する必要はありません。ただ一意であれば十分です。
+TIP: アクティビティオブジェクトの``id``プロパティには、​必ずしもアクセス可能なURIを設定する必要はありません。​ただ一意であれば十分です。
 
-``sendActivity()``メソッドの2番目のパラメータには受信者が入りますが、ここでは``"followers"``という特別なオプションを指定しました。このオプションを指定すると、先ほど実装したフォロワーコレクション・ディスパッチャーを使用して、全てのフォロワーにアクティビティを送信します。
+``sendActivity()``メソッドの2番目のパラメータには受信者が入りますが、​ここでは``"followers"``という特別なオプションを指定しました。​このオプションを指定すると、​先ほど実装したフォロワーコレクション・ディスパッチャーを使用して、​全てのフォロワーにアクティビティを送信します。
 
-さて、実装が完了したので、``Create(Note)``アクティビティが正しく送信されるか確認してみましょう。
+さて、​実装が完了したので、​``Create(Note)``アクティビティが正しく送信されるか確認してみましょう。
 
-``fedify tunnel``コマンドでローカルサーバーをパブリックインターネットに公開した状態で、link:https://activitypub.academy/[ActivityPub.Academy]に入り、`+@johndoe@temp-address.serveo.net+`（ドメイン名は割り当てられた一時的なドメイン名に置き換えてください）をフォローします。フォロワーリストでフォローリクエストが確実に承認されたことを確認した後、ウェブブラウザで<https://temp-address.serveo.net/>（同様に、ドメイン名は置き換えてください）ページに入り、新しい投稿を作成します。
+``fedify tunnel``コマンドでローカルサーバーをパブリックインターネットに公開した状態で、​link:https://activitypub.academy/[ActivityPub.Academy]に入り、​`+@johndoe@temp-address.serveo.net+`（ドメイン名は割り当てられた一時的なドメイン名に置き換えてください）をフォローします。​フォロワーリストでフォローリクエストが確実に承認されたことを確認した後、​ウェブブラウザで<https://temp-address.serveo.net/>（同様に、​ドメイン名は置き換えてください）ページに入り、​新しい投稿を作成します。
 
-CAUTION: アクティビティ送信をテストする際は、必ず__localhost__ではなく、パブリックインターネットからアクセス可能なドメイン名で接続する必要があります。ActivityPubオブジェクトのIDを決定する際、リクエストが来たドメイン名を基準にURIを構築するためです。
+CAUTION: アクティビティ送信をテストする際は、​必ず__localhost__ではなく、​パブリックインターネットからアクセス可能なドメイン名で接続する必要があります。​ActivityPubオブジェクトのIDを決定する際、​リクエストが来たドメイン名を基準にURIを構築するためです。
 
-``Create(Note)``アクティビティがうまく送信されたかを確認するために、ActivityPub.AcademyのActivity Logを見てみましょう：
+``Create(Note)``アクティビティがうまく送信されたかを確認するために、​ActivityPub.AcademyのActivity Logを見てみましょう：
 
 .受信された``Create(Note)``アクティビティが表示されているActivity Log
 image::activity-log-5.png[受信されたCreate(Note)アクティビティが表示されているActivity Log]
 
-うまく届いていますね。それではActivityPub.Academyでタイムラインを確認してみましょう：
+うまく届いていますね。​それではActivityPub.Academyでタイムラインを確認してみましょう：
 
 .ActivityPub.Academyのタイムラインに作成した投稿がよく表示されている
 image::academy-timeline.png[ActivityPub.Academyのタイムラインに作成した投稿がよく表示されている]
@@ -2485,9 +2485,9 @@ image::academy-timeline.png[ActivityPub.Academyのタイムラインに作成し
 
 == プロフィールページ内の投稿リスト
 
-現在のプロフィールページには名前とフェディバースハンドル、フォロワー数のみが表示され、肝心の投稿は表示されていません。プロフィールページで作成した投稿を表示しましょう。
+現在のプロフィールページには名前とフェディバースハンドル、​フォロワー数のみが表示され、​肝心の投稿は表示されていません。​プロフィールページで作成した投稿を表示しましょう。
 
-まず__src/views.tsx__ファイルを開き、``<PostList>``コンポーネントを追加します：
+まず__src/views.tsx__ファイルを開き、​``<PostList>``コンポーネントを追加します：
 
 [source,tsx]
 ----
@@ -2506,7 +2506,7 @@ export const PostList: FC<PostListProps> = ({ posts }) => (
 );
 ----
 
-そして__src/app.tsx__ファイルを開き、先ほど定義した``<PostList>``コンポーネントを``import``します：
+そして__src/app.tsx__ファイルを開き、​先ほど定義した``<PostList>``コンポーネントを``import``します：
 
 [source,typescript,highlight=5]
 ----
@@ -2548,7 +2548,7 @@ app.get("/users/:username", async (c) => {
 });
 ----
 
-それでは、ウェブブラウザで<http://localhost:8000/users/johndoe>ページを開いてみましょう：
+それでは、​ウェブブラウザで<http://localhost:8000/users/johndoe>ページを開いてみましょう：
 
 .変更されたプロフィールページ
 image::profile-page-4.png[変更されたプロフィールページ]
@@ -2557,9 +2557,9 @@ image::profile-page-4.png[変更されたプロフィールページ]
 
 == フォロー
 
-現在、我々が作成したアクターは他のサーバーのアクターからフォローリクエストを受け取ることはできますが、他のサーバーのアクターにフォローリクエストを送ることはできません。フォローができないため、他のアクターが作成した投稿も見ることができません。では、他のサーバーのアクターにフォローリクエストを送る機能を追加しましょう。
+現在、​我々が作成したアクターは他のサーバーのアクターからフォローリクエストを受け取ることはできますが、​他のサーバーのアクターにフォローリクエストを送ることはできません。​フォローができないため、​他のアクターが作成した投稿も見ることができません。​では、​他のサーバーのアクターにフォローリクエストを送る機能を追加しましょう。
 
-まずUIから作りましょう。__src/views.tsx__ファイルを開き、既存の``<Home>``コンポーネントを次のように修正します：
+まずUIから作りましょう。​__src/views.tsx__ファイルを開き、​既存の``<Home>``コンポーネントを次のように修正します：
 
 [source,tsx,highlight=6..17]
 ----
@@ -2587,16 +2587,16 @@ export const Home: FC<HomeProps> = ({ user }) => (
 );
 ----
 
-トップページが正しく修正されたか確認するために、ウェブブラウザで<http://localhost:8000/>ページを開いてみましょう：
+トップページが正しく修正されたか確認するために、​ウェブブラウザで<http://localhost:8000/>ページを開いてみましょう：
 
 .フォローリクエストUIが追加されたトップページ
 image::home-3.png[フォローリクエストUIが追加されたトップページ]
 
 === ``Follow``アクティビティの送信
 
-フォローリクエストUIができたので、実際に``Follow``アクティビティを送信するコードを書きましょう。
+フォローリクエストUIができたので、​実際に``Follow``アクティビティを送信するコードを書きましょう。
 
-__src/app.tsx__ファイルを開き、Fedifyが提供する``Follow``クラスと``isActor()``および``lookupObject()``関数を``import``します：
+__src/app.tsx__ファイルを開き、​Fedifyが提供する``Follow``クラスと``isActor()``および``lookupObject()``関数を``import``します：
 
 [source,typescript,highlight=3..5]
 ----
@@ -2637,23 +2637,23 @@ app.post("/users/:username/following", async (c) => {
   return c.text("Successfully sent a follow request");
 });
 ----
-<1> ``lookupObject()``関数は、アクターを含むActivityPubオブジェクトを検索します。入力としてActivityPubオブジェクトの一意のURIまたはフェディバースハンドルを受け取り、検索したActivityPubオブジェクトを返します。
-<2> ``isActor()``関数は、与えられたActivityPubオブジェクトがアクターかどうかを確認します。
-<3> このコードでは``sendActivity()``メソッドを使用して、検索したアクターに``Follow``アクティビティを送信しています。しかし、まだ``follows``テーブルにレコードは追加していません。これは、相手から``Accept(Follow)``アクティビティを受け取ってからレコードを追加する必要があるためです。
+<1> ``lookupObject()``関数は、​アクターを含むActivityPubオブジェクトを検索します。​入力としてActivityPubオブジェクトの一意のURIまたはフェディバースハンドルを受け取り、​検索したActivityPubオブジェクトを返します。
+<2> ``isActor()``関数は、​与えられたActivityPubオブジェクトがアクターかどうかを確認します。
+<3> このコードでは``sendActivity()``メソッドを使用して、​検索したアクターに``Follow``アクティビティを送信しています。​しかし、​まだ``follows``テーブルにレコードは追加していません。​これは、​相手から``Accept(Follow)``アクティビティを受け取ってからレコードを追加する必要があるためです。
 
 === テスト
 
-実装したフォローリクエスト機能が正しく動作するか確認する必要があります。今回もアクティビティを送信する必要があるため、``fedify tunnel``コマンドを使用してローカルサーバーをパブリックインターネットに公開した後、ウェブブラウザで<https://temp-address.serveo.net/>（ドメイン名は置き換えてください）ページにアクセスします：
+実装したフォローリクエスト機能が正しく動作するか確認する必要があります。​今回もアクティビティを送信する必要があるため、​``fedify tunnel``コマンドを使用してローカルサーバーをパブリックインターネットに公開した後、​ウェブブラウザで<https://temp-address.serveo.net/>（ドメイン名は置き換えてください）ページにアクセスします：
 
 .フォローリクエストUIがあるトップページ
 image::home-3.png[フォローリクエストUIがあるトップページ]
 
-フォローリクエスト入力欄にフォローするアクターのフェディバースハンドルを入力する必要があります。ここでは簡単なデバッグのためにlink:https://activitypub.academy/[ActivityPub.Academy]のアクターを入力しましょう。参考までに、ActivityPub.Academyにログインした一時アカウントのハンドルは、一時アカウントの名前をクリックしてプロフィールページに入ると、名前のすぐ下に表示されます：
+フォローリクエスト入力欄にフォローするアクターのフェディバースハンドルを入力する必要があります。​ここでは簡単なデバッグのためにlink:https://activitypub.academy/[ActivityPub.Academy]のアクターを入力しましょう。​参考までに、​ActivityPub.Academyにログインした一時アカウントのハンドルは、​一時アカウントの名前をクリックしてプロフィールページに入ると、​名前のすぐ下に表示されます：
 
 .ActivityPub.Academyのアカウントプロフィールページに表示されているフェディバースハンドル
 image::academy-profile.png[ActivityPub.Academyのアカウントプロフィールページに表示されているフェディバースハンドル]
 
-以下のようにActivityPub.Academyのアクターハンドルを入力した後、btn:[Follow]ボタンをクリックしてフォローリクエストを送信します：
+以下のようにActivityPub.Academyのアクターハンドルを入力した後、​btn:[Follow]ボタンをクリックしてフォローリクエストを送信します：
 
 .ActivityPub.Academyのアクターにフォローリクエストを送信中
 image::home-5.png[ActivityPub.Academyのアクターにフォローリクエストを送信中]
@@ -2663,18 +2663,18 @@ image::home-5.png[ActivityPub.Academyのアクターにフォローリクエス�
 .ActivityPub.AcademyのActivity Log
 image::activity-log-6.png[ActivityPub.AcademyのActivity Log]
 
-Activity Logには我々が送信した``Follow``アクティビティと、ActivityPub.Academyから送信された返信である``Accept(Follow)``アクティビティが表示されます。
+Activity Logには我々が送信した``Follow``アクティビティと、​ActivityPub.Academyから送信された返信である``Accept(Follow)``アクティビティが表示されます。
 
-ActivityPub.Academyの通知ページに行くと、実際にフォローリクエストが到着したことを確認できます：
+ActivityPub.Academyの通知ページに行くと、​実際にフォローリクエストが到着したことを確認できます：
 
 .ActivityPub.Academyの通知ページに表示された到着したフォローリクエスト
 image::academy-notifications.png[ActivityPub.Academyの通知ページに表示された到着したフォローリクエスト]
 
 === ``Accept(Follow)``アクティビティの受信
 
-しかし、まだ受信した``Accept(Follow)``アクティビティに対して何の動作も取っていないため、この部分を実装する必要があります。
+しかし、​まだ受信した``Accept(Follow)``アクティビティに対して何の動作も取っていないため、​この部分を実装する必要があります。
 
-__src/federation.ts__ファイルを開き、Fedifyが提供する``isActor()``関数および``Actor``型を``import``します：
+__src/federation.ts__ファイルを開き、​Fedifyが提供する``isActor()``関数および``Actor``型を``import``します：
 
 [source,typescript,highlight=14..15]
 ----
@@ -2696,9 +2696,9 @@ import {
   type Recipient,
 } from "@fedify/fedify";
 ----
-<1> このソースファイル内で``Actor``型の名前が重複するため、``APActor``というエイリアスを付けました。
+<1> このソースファイル内で``Actor``型の名前が重複するため、​``APActor``というエイリアスを付けました。
 
-実装に先立ち、初めて遭遇したアクター情報を``actors``テーブルに挿入するコードをリファクタリングして再利用可能にしましょう。以下の関数を追加します：
+実装に先立ち、​初めて遭遇したアクター情報を``actors``テーブルに挿入するコードをリファクタリングして再利用可能にしましょう。​以下の関数を追加します：
 
 [source,typescript]
 ----
@@ -2711,7 +2711,7 @@ async function persistActor(actor: APActor): Promise<Actor | null> {
     db
       .prepare<unknown[], Actor>(
         `
-        -- アクターレコードを新規追加するか、既に存在する場合は更新
+        -- アクターレコードを新規追加するか、​既に存在する場合は更新
         INSERT INTO actors (uri, handle, name, inbox_url, shared_inbox_url, url)
         VALUES (?, ?, ?, ?, ?, ?)
         ON CONFLICT (uri) DO UPDATE SET
@@ -2737,7 +2737,7 @@ async function persistActor(actor: APActor): Promise<Actor | null> {
 }
 ----
 
-定義した``persistActor()``関数は、引数として渡されたアクターオブジェクトに対応するレコードを``actors``テーブルに追加します。既にテーブルに対応するレコードが存在する場合は、レコードを更新します。
+定義した``persistActor()``関数は、​引数として渡されたアクターオブジェクトに対応するレコードを``actors``テーブルに追加します。​既にテーブルに対応するレコードが存在する場合は、​レコードを更新します。
 
 受信トレイの``on(Follow, ...)``部分で同じ役割を果たすコードを``persistActor()``関数を使用するように変更します：
 
@@ -2761,7 +2761,7 @@ federation
   })
 ----
 
-リファクタリングが終わったら、受信トレイに``Accept(Follow)``アクティビティを受け取ったときに取るべき動作を実装します：
+リファクタリングが終わったら、​受信トレイに``Accept(Follow)``アクティビティを受け取ったときに取るべき動作を実装します：
 
 [source,typescript]
 ----
@@ -2793,25 +2793,25 @@ federation
   });
 ----
 
-妥当性を検査するコードが長いですが、要約すると``Accept(Follow)``アクティビティの内容からフォローリクエストを送信したアクター（``follower``）とフォローリクエストを受け取ったアクター（``following``）を取得し、``follows``テーブルにレコードを追加するものです。
+妥当性を検査するコードが長いですが、​要約すると``Accept(Follow)``アクティビティの内容からフォローリクエストを送信したアクター（``follower``）とフォローリクエストを受け取ったアクター（``following``）を取得し、​``follows``テーブルにレコードを追加するものです。
 
 === テスト
 
-これで正しく動作するか確認する必要がありますが、問題があります。先ほどフォローリクエストを送信したとき、file:https://activitypub.academy/[ActivityPub.Academy]側ではフォローリクエストを承認し、``Accept(Follow)``アクティビティを既に送信しているため、この状態でもう一度フォローリクエストを送信しても無視されてしまいます。したがって、ActivityPub.Academyからログアウトした後、再度一時アカウントを作成してテストする必要があります。
+これで正しく動作するか確認する必要がありますが、​問題があります。​先ほどフォローリクエストを送信したとき、​file:https://activitypub.academy/[ActivityPub.Academy]側ではフォローリクエストを承認し、​``Accept(Follow)``アクティビティを既に送信しているため、​この状態でもう一度フォローリクエストを送信しても無視されてしまいます。​したがって、​ActivityPub.Academyからログアウトした後、​再度一時アカウントを作成してテストする必要があります。
 
-ActivityPub.Academyで新しい一時アカウントを作成したら、``fedify tunnel``コマンドでローカルサーバーをパブリックインターネットに公開した状態で、ウェブブラウザで<https://temp-address.serveo.net/>（ドメイン名は置き換えてください）ページにアクセスし、ActivityPub.Academyの新しい一時アカウントにフォローリクエストを送信します。
+ActivityPub.Academyで新しい一時アカウントを作成したら、​``fedify tunnel``コマンドでローカルサーバーをパブリックインターネットに公開した状態で、​ウェブブラウザで<https://temp-address.serveo.net/>（ドメイン名は置き換えてください）ページにアクセスし、​ActivityPub.Academyの新しい一時アカウントにフォローリクエストを送信します。
 
-フォローリクエストが正しく送信されたら、先ほどと同様にActivity Logに``Follow``アクティビティが到着した後、返信として``Accept(Follow)``アクティビティが発信されたのが確認できるはずです：
+フォローリクエストが正しく送信されたら、​先ほどと同様にActivity Logに``Follow``アクティビティが到着した後、​返信として``Accept(Follow)``アクティビティが発信されたのが確認できるはずです：
 
 .受信された``Follow``アクティビティと発信された``Accept(Follow)``アクティビティが表示されているActivity Log
 image::activity-log-7.png[受信されたFollowアクティビティと発信されたAccept(Follow)アクティビティが表示されているActivity Log]
 
-まだフォローリストを実装していないため、``follows``テーブルにレコードが正しく挿入されたか直接確認してみましょう：
+まだフォローリストを実装していないため、​``follows``テーブルにレコードが正しく挿入されたか直接確認してみましょう：
 
 [source,console]
 $ echo "SELECT * FROM follows WHERE follower_id = 1;" | sqlite3 -table microblog.sqlite3
 
-成功していれば、以下のような結果が得られるはずです（``following_id``列の値は多少異なる可能性があります）：
+成功していれば、​以下のような結果が得られるはずです（``following_id``列の値は多少異なる可能性があります）：
 
 [cols="1,1,1"]
 |===
@@ -2826,7 +2826,7 @@ $ echo "SELECT * FROM follows WHERE follower_id = 1;" | sqlite3 -table microblog
 
 我々が作成したアクターがフォローしているアクターのリストを表示するページを作成しましょう。
 
-まず__src/views.tsx__ファイルを開き、``<FollowingList>``コンポーネントを追加します：
+まず__src/views.tsx__ファイルを開き、​``<FollowingList>``コンポーネントを追加します：
 
 [source,tsx]
 ----
@@ -2848,7 +2848,7 @@ export const FollowingList: FC<FollowingListProps> = ({ following }) => (
 );
 ----
 
-次に、__src/app.tsx__ファイルを開き、先ほど定義した``<FollowingList>``コンポーネントをインポートします：
+次に、​__src/app.tsx__ファイルを開き、​先ほど定義した``<FollowingList>``コンポーネントをインポートします：
 
 [source,typescript,highlight=3]
 ----
@@ -2890,16 +2890,16 @@ app.get("/users/:username/following", async (c) => {
 });
 ----
 
-正しく実装されたかどうか確認するために、ウェブブラウザで<http://localhost:8000/users/johndoe/following>ページを開いてみましょう：
+正しく実装されたかどうか確認するために、​ウェブブラウザで<http://localhost:8000/users/johndoe/following>ページを開いてみましょう：
 
 .フォローリスト
 image::following-list.png[フォローリスト]
 
 == フォロー数
 
-フォロワー数を表示しているのと同様に、フォロー数も表示する必要があります。
+フォロワー数を表示しているのと同様に、​フォロー数も表示する必要があります。
 
-__src/views.tsx__ファイルを開き、``<Profile>``コンポーネントを次のように修正します：
+__src/views.tsx__ファイルを開き、​``<Profile>``コンポーネントを次のように修正します：
 
 [source,tsx,highlight=5,13,23..24]
 ----
@@ -2956,9 +2956,9 @@ export const PostPage: FC<PostPageProps> = (props) => (
 );
 ----
 
-では、実際にデータベースを照会してフォロー数を取得するコードを書く必要があります。
+では、​実際にデータベースを照会してフォロー数を取得するコードを書く必要があります。
 
-__src/app.tsx__ファイルを開き、``GET /users/{username}``リクエストに対するハンドラーを次のように修正します：
+__src/app.tsx__ファイルを開き、​``GET /users/{username}``リクエストに対するハンドラーを次のように修正します：
 
 [source,tsx,highlight=5..15,23]
 ----
@@ -3026,30 +3026,30 @@ app.get("/users/:username/posts/:id", (c) => {
 });
 ----
 
-全て修正が完了したら、ウェブブラウザで<http://localhost:8000/users/johndoe>ページを開いてみましょう：
+全て修正が完了したら、​ウェブブラウザで<http://localhost:8000/users/johndoe>ページを開いてみましょう：
 
 .プロフィールページ
 image::profile-page-5.png[プロフィールページ]
 
 == タイムライン
 
-多くの機能を実装しましたが、まだ他のMastodonサーバーで書かれた投稿は表示されていません。これまでの過程から推測できるように、我々が投稿を作成したときに``Create(Note)``アクティビティを送信したのと同様に、他のサーバーから``Create(Note)``アクティビティを受信する必要があります。
+多くの機能を実装しましたが、​まだ他のMastodonサーバーで書かれた投稿は表示されていません。​これまでの過程から推測できるように、​我々が投稿を作成したときに``Create(Note)``アクティビティを送信したのと同様に、​他のサーバーから``Create(Note)``アクティビティを受信する必要があります。
 
-他のMastodonサーバーで投稿を作成したときに具体的に何が起こるかを見るために、link:https://activitypub.academy/[ActivityPub.Academy]で新しい投稿を作成してみましょう：
+他のMastodonサーバーで投稿を作成したときに具体的に何が起こるかを見るために、​link:https://activitypub.academy/[ActivityPub.Academy]で新しい投稿を作成してみましょう：
 
 .ActivityPub.Academyで新しい投稿を作成中
 image::academy-compose.png[ActivityPub.Academyで新しい投稿を作成中]
 
-btn:[Publish!]ボタンをクリックして投稿を保存した後、Activity Logページに移動して``Create(Note)``アクティビティが確かに送信されたかどうか確認します：
+btn:[Publish!]ボタンをクリックして投稿を保存した後、​Activity Logページに移動して``Create(Note)``アクティビティが確かに送信されたかどうか確認します：
 
 .送信された``Create(Note)``アクティビティが表示されているActivity Log
 image::activity-log-8.png[送信されたCreate(Note)アクティビティが表示されているActivity Log]
 
-これで、このように送信された``Create(Note)``アクティビティを受信するコードを書く必要があります。
+これで、​このように送信された``Create(Note)``アクティビティを受信するコードを書く必要があります。
 
 === ``Create(Note)``アクティビティの受信
 
-__src/federation.ts__ファイルを開き、Fedifyが提供する``Create``クラスをインポートします：
+__src/federation.ts__ファイルを開き、​Fedifyが提供する``Create``クラスをインポートします：
 
 [source,typescript,highlight=3]
 ----
@@ -3093,16 +3093,16 @@ import {
     ).run(object.id.href, actorId, content, object.url?.href);
   });
 ----
-<1> ``getAttribution()``メソッドを使用して投稿者を取得した後、
+<1> ``getAttribution()``メソッドを使用して投稿者を取得した後、​
 <2> ``persistActor()``関数を通じてそのアクターがまだ``actors``テーブルに存在しない場合は追加します。
 <3> そして``posts``テーブルに新しいレコードを1つ追加します。
 
-コードが正しく動作するかどうか確認するために、もう一度link:https://activitypub.academy/[ActivityPub.Academy]に入って投稿を作成してみましょう。Activity Logを開いて``Create(Note)``アクティビティが送信されたことを確認した後、以下のコマンドで``posts``テーブルに本当にレコードが追加されたかどうか確認します：
+コードが正しく動作するかどうか確認するために、​もう一度link:https://activitypub.academy/[ActivityPub.Academy]に入って投稿を作成してみましょう。​Activity Logを開いて``Create(Note)``アクティビティが送信されたことを確認した後、​以下のコマンドで``posts``テーブルに本当にレコードが追加されたかどうか確認します：
 
 [source,console]
 $ echo "SELECT * FROM posts WHERE actor_id != 1" | sqlite3 -table microblog.sqlite3
 
-実際にレコードが追加されていれば、以下のような結果が表示されるはずです：
+実際にレコードが追加されていれば、​以下のような結果が表示されるはずです：
 
 [cols="1,1,1,1,1,1"]
 |===
@@ -3118,9 +3118,9 @@ $ echo "SELECT * FROM posts WHERE actor_id != 1" | sqlite3 -table microblog.sqli
 
 === リモート投稿の表示
 
-さて、これでリモート投稿を``posts``テーブルにレコードとして追加しましたので、あとはそれらのレコードを適切に表示するだけです。一般的に「タイムライン」と呼ばれる機能です。
+さて、​これでリモート投稿を``posts``テーブルにレコードとして追加しましたので、​あとはそれらのレコードを適切に表示するだけです。​一般的に「タイムライン」と呼ばれる機能です。
 
-まず__src/views.tsx__ファイルを開き、``<Home>``コンポーネントを修正します：
+まず__src/views.tsx__ファイルを開き、​``<Home>``コンポーネントを修正します：
 
 [source,tsx,highlight=1,8]
 ----
@@ -3138,7 +3138,7 @@ export const Home: FC<HomeProps> = ({ user, posts }) => (
 <1> ``extends PostListProps``を追加
 <2> ``<PostList>``コンポーネントを追加
 
-その後、__src/app.tsx__ファイルを開いて``GET /``リクエストハンドラーを修正します：
+その後、​__src/app.tsx__ファイルを開いて``GET /``リクエストハンドラーを修正します：
 
 [source,tsx,highlight=5..19,22]
 ----
@@ -3169,45 +3169,45 @@ app.get("/", (c) => {
 });
 ----
 
-さて、これで全て実装できましたので、ウェブブラウザで<http://localhost:8000/>ページを開いてタイムラインを鑑賞しましょう：
+さて、​これで全て実装できましたので、​ウェブブラウザで<http://localhost:8000/>ページを開いてタイムラインを鑑賞しましょう：
 
 .トップページに表示されるタイムライン
 image::home-6.png[トップページに表示されるタイムライン]
 
-上のように、リモートで作成された投稿とローカルで作成された投稿が最新順に適切に表示されていることがわかります。どうでしょうか？気に入りましたか？
+上のように、​リモートで作成された投稿とローカルで作成された投稿が最新順に適切に表示されていることがわかります。​どうでしょうか？気に入りましたか？
 
-このチュートリアルで実装する内容は以上です。これを基に皆さん自身のマイクロブログを完成させることも可能でしょう。
+このチュートリアルで実装する内容は以上です。​これを基に皆さん自身のマイクロブログを完成させることも可能でしょう。
 
 == 改善点
 
-このチュートリアルを通じて完成した皆さんのマイクロブログは、残念ながらまだ実際の使用には適していません。特にセキュリティ面で多くの脆弱性があるため、実際に使用するのは危険かもしれません。
+このチュートリアルを通じて完成した皆さんのマイクロブログは、​残念ながらまだ実際の使用には適していません。​特にセキュリティ面で多くの脆弱性があるため、​実際に使用するのは危険かもしれません。
 
-皆さんが作成したマイクロブログをさらに発展させたい方は、以下の課題を自分で解決してみるのもよいでしょう：
+皆さんが作成したマイクロブログをさらに発展させたい方は、​以下の課題を自分で解決してみるのもよいでしょう：
 
-- 現在は認証が一切ないため、誰でもURLさえ知っていれば投稿ができてしまいます。ログインプロセスを追加してこれを防ぐにはどうすればよいでしょうか？
+- 現在は認証が一切ないため、​誰でもURLさえ知っていれば投稿ができてしまいます。​ログインプロセスを追加してこれを防ぐにはどうすればよいでしょうか？
 
-- 現在の実装では、ActivityPubを通じて受け取った``Note``オブジェクト内のHTMLをそのまま出力するようになっています。そのため、悪意のあるActivityPubサーバーが``<script>while (true) alert('べー');</script>``のようなHTMLを含む``Create(Note)``アクティビティを送信する攻撃が可能です。これはlink:https://ja.wikipedia.org/wiki/%E3%82%AF%E3%83%AD%E3%82%B9%E3%82%B5%E3%82%A4%E3%83%88%E3%82%B9%E3%82%AF%E3%83%AA%E3%83%97%E3%83%86%E3%82%A3%E3%83%B3%E3%82%B0[XSS]脆弱性と呼ばれます。このような脆弱性はどのように防ぐことができるでしょうか？
+- 現在の実装では、​ActivityPubを通じて受け取った``Note``オブジェクト内のHTMLをそのまま出力するようになっています。​そのため、​悪意のあるActivityPubサーバーが``<script>while (true) alert('べー');</script>``のようなHTMLを含む``Create(Note)``アクティビティを送信する攻撃が可能です。​これはlink:https://ja.wikipedia.org/wiki/%E3%82%AF%E3%83%AD%E3%82%B9%E3%82%B5%E3%82%A4%E3%83%88%E3%82%B9%E3%82%AF%E3%83%AA%E3%83%97%E3%83%86%E3%82%A3%E3%83%B3%E3%82%B0[XSS]脆弱性と呼ばれます。​このような脆弱性はどのように防ぐことができるでしょうか？
 
-- SQLiteデータベースで次のSQLを実行して、私たちが作成したアクターの名前を変更してみましょう：
+- SQLiteデータベースで次のSQLを実行して、​私たちが作成したアクターの名前を変更してみましょう：
 +
 [source,sql]
 ----
 UPDATE actors SET name = 'Renamed' WHERE id = 1;
 ----
 +
-このようにアクターの名前を変更した場合、他のMastodonサーバーで変更された名前が適用されるでしょうか？適用されない場合、どのようなアクティビティを送信すれば変更が適用されるでしょうか？
+このようにアクターの名前を変更した場合、​他のMastodonサーバーで変更された名前が適用されるでしょうか？適用されない場合、​どのようなアクティビティを送信すれば変更が適用されるでしょうか？
 
-- アクターにプロフィール画像を追加してみましょう。プロフィール画像を追加する方法が気になる場合は、``fedify lookup``コマンドを使用して既にプロフィール画像があるアクターを検索してみてください。
+- アクターにプロフィール画像を追加してみましょう。​プロフィール画像を追加する方法が気になる場合は、​``fedify lookup``コマンドを使用して既にプロフィール画像があるアクターを検索してみてください。
 
-- 他のMastodonサーバーで画像が添付された投稿を作成してみましょう。私たちが作成したタイムラインでは、投稿に添付された画像が表示されません。どうすれば添付された画像を表示できるでしょうか？
+- 他のMastodonサーバーで画像が添付された投稿を作成してみましょう。​私たちが作成したタイムラインでは、​投稿に添付された画像が表示されません。​どうすれば添付された画像を表示できるでしょうか？
 
-- 投稿内で他のアクターをメンションできるようにしてみましょう。メンションした相手に通知を送るにはどうすればよいでしょうか？link:https://activitypub.academy/[ActivityPub.Academy]のActivity Logを活用して方法を探してみてください。
+- 投稿内で他のアクターをメンションできるようにしてみましょう。​メンションした相手に通知を送るにはどうすればよいでしょうか？link:https://activitypub.academy/[ActivityPub.Academy]のActivity Logを活用して方法を探してみてください。
 
 == 著者とライセンス
 
 === 著者：{author}
 
-1988年ソウル生まれ。2000年からウェブ開発を始め、主にPython、Haskell、C#、TypeScript等の言語を使用。オープンソースとフェディバースの熱烈な支持者であり、ActivityPubサーバーフレームワークであるFedifyと、Fedifyベースの一人用ActivityPub実装であるHolloを開発。
+1988年ソウル生まれ。​2000年からウェブ開発を始め、​主にPython、​Haskell、​C#、​TypeScript等の言語を使用。​オープンソースとフェディバースの熱烈な支持者であり、​ActivityPubサーバーフレームワークであるFedifyと、​Fedifyベースの一人用ActivityPub実装であるHolloを開発。
 
 - ウェブサイト：<https://hongminhee.org/>
 - メールアドレス：{email}
@@ -3218,6 +3218,6 @@ UPDATE actors SET name = 'Renamed' WHERE id = 1;
 
 本書はlink:https://creativecommons.org/licenses/by-sa/4.0/deed.ja[クリエイティブ・コモンズ表示-継承4.0国際ライセンス]の下に提供されています。
 
-本書はAsciiDocで組版されており、以下のGitHubリポジトリからソースコードを入手できます：
+本書はAsciiDocで組版されており、​以下のGitHubリポジトリからソースコードを入手できます：
 
 <https://github.com/dahlia/fedify-microblog-tutorial-ja>
