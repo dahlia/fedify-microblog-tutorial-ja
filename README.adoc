@@ -3030,6 +3030,153 @@ app.get("/users/:username/posts/:id", (c) => {
 .プロフィールページ
 image::profile-page-5.png[プロフィールページ]
 
+== タイムライン
+
+多くの機能を実装しましたが、まだ他のMastodonサーバーで書かれた投稿は表示されていません。これまでの過程から推測できるように、我々が投稿を作成したときに``Create(Note)``アクティビティを送信したのと同様に、他のサーバーから``Create(Note)``アクティビティを受信する必要があります。
+
+他のMastodonサーバーで投稿を作成したときに具体的に何が起こるかを見るために、link:https://activitypub.academy/[ActivityPub.Academy]で新しい投稿を作成してみましょう：
+
+.ActivityPub.Academyで新しい投稿を作成中
+image::academy-compose.png[ActivityPub.Academyで新しい投稿を作成中]
+
+btn:[Publish!]ボタンをクリックして投稿を保存した後、Activity Logページに移動して``Create(Note)``アクティビティが確かに送信されたかどうか確認します：
+
+.送信された``Create(Note)``アクティビティが表示されているActivity Log
+image::activity-log-8.png[送信されたCreate(Note)アクティビティが表示されているActivity Log]
+
+これで、このように送信された``Create(Note)``アクティビティを受信するコードを書く必要があります。
+
+=== ``Create(Note)``アクティビティの受信
+
+__src/federation.ts__ファイルを開き、Fedifyが提供する``Create``クラスをインポートします：
+
+[source,typescript,highlight=3]
+----
+import {
+  Accept,
+  Create,
+  Endpoints,
+  Follow,
+  Note,
+  PUBLIC_COLLECTION,
+  Person,
+  Undo,
+  createFederation,
+  exportJwk,
+  generateCryptoKeyPair,
+  getActorHandle,
+  importJwk,
+  isActor,
+  type Actor as APActor,
+  type Recipient,
+} from "@fedify/fedify";
+----
+
+そして受信トレイのコードに``on(Create, ...)``を追加します：
+
+[source,typescript]
+----
+  .on(Create, async (ctx, create) => {
+    const object = await create.getObject();
+    if (!(object instanceof Note)) return;
+    const actor = create.actorId;
+    if (actor == null) return;
+    const author = await object.getAttribution();      // <1>
+    if (!isActor(author) || author.id?.href !== actor.href) return;
+    const actorId = (await persistActor(author))?.id;  // <2>
+    if (actorId == null) return;
+    if (object.id == null) return;
+    const content = object.content?.toString();
+    db.prepare(                                        // <3>
+      "INSERT INTO posts (uri, actor_id, content, url) VALUES (?, ?, ?, ?)",
+    ).run(object.id.href, actorId, content, object.url?.href);
+  });
+----
+<1> ``getAttribution()``メソッドを使用して投稿者を取得した後、
+<2> ``persistActor()``関数を通じてそのアクターがまだ``actors``テーブルに存在しない場合は追加します。
+<3> そして``posts``テーブルに新しいレコードを1つ追加します。
+
+コードが正しく動作するかどうか確認するために、もう一度link:https://activitypub.academy/[ActivityPub.Academy]に入って投稿を作成してみましょう。Activity Logを開いて``Create(Note)``アクティビティが送信されたことを確認した後、以下のコマンドで``posts``テーブルに本当にレコードが追加されたかどうか確認します：
+
+[source,console]
+$ echo "SELECT * FROM posts WHERE actor_id != 1" | sqlite3 -table microblog.sqlite3
+
+実際にレコードが追加されていれば、以下のような結果が表示されるはずです：
+
+[cols="1,1,1,1,1,1"]
+|===
+| `id` | `uri` | `actor_id` | `content` | `url` | `created`
+
+| `3`
+| `https://activitypub.academy/users/algusia_draneoll/statuses/113068684551948316`
+| `3`
+| `<p>Would it send a Create(Note) activity?</p>`
+| `https://activitypub.academy/@algusia_draneoll/113068684551948316`
+| `2024-09-02 15:33:32`
+|===
+
+=== リモート投稿の表示
+
+さて、これでリモート投稿を``posts``テーブルにレコードとして追加しましたので、あとはそれらのレコードを適切に表示するだけです。一般的に「タイムライン」と呼ばれる機能です。
+
+まず__src/views.tsx__ファイルを開き、``<Home>``コンポーネントを修正します：
+
+[source,tsx,highlight=1,8]
+----
+export interface HomeProps extends PostListProps {  // <1>
+  user: User & Actor;
+}
+
+export const Home: FC<HomeProps> = ({ user, posts }) => (
+  <>
+    {/* ... 省略 ... */}
+    <PostList posts={posts} />                      // <2>
+  </>
+);
+----
+<1> ``extends PostListProps``を追加
+<2> ``<PostList>``コンポーネントを追加
+
+その後、__src/app.tsx__ファイルを開いて``GET /``リクエストハンドラーを修正します：
+
+[source,tsx,highlight=5..19,22]
+----
+app.get("/", (c) => {
+  // ... 省略 ...
+  if (user == null) return c.redirect("/setup");
+
+  const posts = db
+    .prepare<unknown[], Post & Actor>(
+      `
+      SELECT actors.*, posts.*
+      FROM posts
+      JOIN actors ON posts.actor_id = actors.id
+      WHERE posts.actor_id = ? OR posts.actor_id IN (
+        SELECT following_id
+        FROM follows
+        WHERE follower_id = ?
+      )
+      ORDER BY posts.created DESC
+      `,
+    )
+    .all(user.id, user.id);
+  return c.html(
+    <Layout>
+      <Home user={user} posts={posts} />
+    </Layout>,
+  );
+});
+----
+
+さて、これで全て実装できましたので、ウェブブラウザで<http://localhost:8000/>ページを開いてタイムラインを鑑賞しましょう：
+
+.トップページに表示されるタイムライン
+image::home-6.png[トップページに表示されるタイムライン]
+
+上のように、リモートで作成された投稿とローカルで作成された投稿が最新順に適切に表示されていることがわかります。どうでしょうか？気に入りましたか？
+
+このチュートリアルで実装する内容は以上です。これを基に皆さん自身のマイクロブログを完成させることも可能でしょう。
+
 == 著者とライセンス
 
 === 著者：洪 民憙（ホン・ミンヒ）
