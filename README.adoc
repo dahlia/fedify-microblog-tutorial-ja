@@ -1918,6 +1918,564 @@ image::remote-profile-2.png[Mastodonで再度照会した我々が作成した�
 
 皆さんが他のMastodonサーバーで正確なフォロワー数が表示されるのを直接確認したい場合は、私が列挙した方法のいずれかを試してみてください。
 
+== 投稿
+
+さて、いよいよ投稿を実装する時が来ました。一般的なブログとは異なり、我々が作成するマイクロブログは他のサーバーで作成された投稿も保存できる必要があります。これを念頭に置いて設計しましょう。
+
+=== テーブルの作成
+
+まず``posts``テーブルを作成しましょう。__src/schema.sql__ファイルを開いて以下のSQLを追加します：
+
+[source,sql]
+----
+CREATE TABLE IF NOT EXISTS posts (
+  id       INTEGER NOT NULL PRIMARY KEY,                                         -- <1>
+  uri      TEXT    NOT NULL UNIQUE CHECK (uri <> ''),                            -- <2>
+  actor_id INTEGER NOT NULL REFERENCES actors (id),                              -- <3>
+  content  TEXT    NOT NULL,                                                     -- <4>
+  url      TEXT             CHECK (url LIKE 'https://%' OR url LIKE 'http://%'), -- <5>
+  created  TEXT    NOT NULL DEFAULT (CURRENT_TIMESTAMP) CHECK (created <> '')    -- <6>
+);
+----
+<1> ``id``カラムはテーブルの主キーです。
+<2> ``uri``カラムは投稿の一意なURIを含みます。先ほど述べたように、ActivityPubオブジェクトはすべて一意なURIを持つ必要があるためです。
+<3> ``actor_id``カラムは投稿を作成したアクターを指します。
+<4> ``content``カラムには投稿の内容を含みます。
+<5> ``url``カラムにはウェブブラウザで投稿を表示するURLを含みます。ActivityPubオブジェクトのURIとウェブブラウザに表示されるページのURLが一致する場合もありますが、そうでない場合もあるため、別のカラムが必要です。ただし、空である可能性もあります。
+<6> ``created``カラムには投稿作成時刻を含みます。
+
+SQLを実行して``posts``テーブルを作成しましょう：
+
+[source,console]
+$ sqlite3 microblog.sqlite3 < src/schema.sql
+
+``posts``テーブルに保存されるレコードをJavaScriptで表現する``Post``型も__src/schema.ts__ファイルに定義します：
+
+[source,typescript]
+----
+export interface Post {
+  id: number;
+  uri: string;
+  actor_id: number;
+  content: string;
+  url: string | null;
+  created: string;
+}
+----
+
+=== トップページ
+
+投稿を作成するには、どこかにフォームが必要ですね。そういえば、まだトップページもきちんと作成していませんでした。トップページに投稿作成フォームを追加しましょう。
+
+まず__src/views.tsx__ファイルを開いて``User``型を``import``します：
+
+[source,typescript]
+import type { Actor, User } from "./schema.ts";
+
+そして``<Home>``コンポーネントを定義します：
+
+[source,tsx]
+----
+export interface HomeProps {
+  user: User & Actor;
+}
+
+export const Home: FC<HomeProps> = ({ user }) => (
+  <>
+    <hgroup>
+      <h1>{user.name}'s microblog</h1>
+      <p>
+        <a href={`/users/${user.username}`}>{user.name}'s profile</a>
+      </p>
+    </hgroup>
+    <form method="post" action={`/users/${user.username}/posts`}>
+      <fieldset>
+        <label>
+          <textarea name="content" required={true} placeholder="What's up?" />
+        </label>
+      </fieldset>
+      <input type="submit" value="Post" />
+    </form>
+  </>
+);
+----
+
+次に__src/app.tsx__ファイルを開いて先ほど定義した``<Home>``コンポーネントを``import``します：
+
+[source,typescript]
+import { FollowerList, Home, Layout, Profile, SetupForm } from "./views.tsx";
+
+そして既にある``GET /``リクエストハンドラを：
+
+[source,typescript]
+app.get("/", (c) => c.text("Hello, Fedify!"));
+
+以下のように修正します：
+
+[source,tsx]
+----
+app.get("/", (c) => {
+  const user = db
+    .prepare<unknown[], User & Actor>(
+      `
+      SELECT users.*, actors.*
+      FROM users
+      JOIN actors ON users.id = actors.user_id
+      LIMIT 1
+      `,
+    )
+    .get();
+  if (user == null) return c.redirect("/setup");
+
+  return c.html(
+    <Layout>
+      <Home user={user} />
+    </Layout>,
+  );
+});
+----
+
+ここまでできたら、トップページがうまく表示されるか確認しましょう。ウェブブラウザで<http://localhost:8000/>ページを開くと以下のように表示されるはずです：
+
+.トップページ
+image::home.png[トップページ]
+
+=== レコードの挿入
+
+投稿作成フォームを作成したので、実際に投稿内容を``posts``テーブルに保存するコードが必要です。
+
+まず__src/federation.ts__ファイルを開いてFedifyが提供する``Note``クラスを``import``します：
+
+[source,typescript,highlight=5]
+----
+import {
+  Accept,
+  Endpoints,
+  Follow,
+  Note,
+  Person,
+  Undo,
+  createFederation,
+  exportJwk,
+  generateCryptoKeyPair,
+  getActorHandle,
+  importJwk,
+  type Recipient,
+} from "@fedify/fedify";
+----
+
+以下のコードを追加します：
+
+[source,typescript]
+----
+federation.setObjectDispatcher(
+  Note,
+  "/users/{identifier}/posts/{id}",
+  (ctx, values) => {
+    return null;
+  },
+);
+----
+
+上記のコードはまだ特に役割を果たしませんが、投稿のパーマリンク形式を決めるのに必要です。実際の実装は後でしましょう。
+
+ActivityPubでは投稿の内容をHTML形式でやり取りします。したがって、プレーンテキスト形式で入力された内容をHTML形式に変換する必要があります。その際、``<``、``>``などの文字をHTMLで表示できるように``&lt;``、``&gt;``などのHTMLエンティティに変換してくれるlink:https://github.com/wooorm/stringify-entities[stringify-entities]パッケージが必要です：
+
+[source,console]
+$ npm add stringify-entities
+
+そして__src/app.tsx__ファイルを開いてインストールしたパッケージを``import``します。
+
+[source,typescript]
+import { stringifyEntities } from "stringify-entities";
+
+``Post``型とFedifyが提供する``Note``クラスも``import``します：
+
+[source,typescript]
+import type { Actor, Post, User } from "./schema.ts";
+import { Note } from "@fedify/fedify";
+
+そして``POST /users/{username}/posts``リクエストハンドラを実装します：
+
+[source,typescript]
+----
+app.post("/users/:username/posts", async (c) => {
+  const username = c.req.param("username");
+  const actor = db
+    .prepare<unknown[], Actor>(
+      `
+      SELECT actors.*
+      FROM actors
+      JOIN users ON users.id = actors.user_id
+      WHERE users.username = ?
+      `,
+    )
+    .get(username);
+  if (actor == null) return c.redirect("/setup");
+  const form = await c.req.formData();
+  const content = form.get("content")?.toString();
+  if (content == null || content.trim() === "") {
+    return c.text("Content is required", 400);
+  }
+  const ctx = fedi.createContext(c.req.raw, undefined);
+  const url: string | null = db.transaction(() => {
+    const post = db
+      .prepare<unknown[], Post>(
+        `
+        INSERT INTO posts (uri, actor_id, content)
+        VALUES ('https://localhost/', ?, ?)
+        RETURNING *
+        `,
+      )
+      .get(actor.id, stringifyEntities(content, { escapeOnly: true }));
+    if (post == null) return null;
+    const url = ctx.getObjectUri(Note, {
+      handle: username,
+      id: post.id.toString(),
+    }).href;
+    db.prepare("UPDATE posts SET uri = ?, url = ? WHERE id = ?").run(
+      url,
+      url,
+      post.id,
+    );
+    return url;
+  })();
+  if (url == null) return c.text("Failed to create post", 500);
+  return c.redirect(url);
+});
+----
+
+普通に``posts``テーブルにレコードを追加するコードですが、一つ特殊な部分があります。投稿を表すActivityPubオブジェクトのURIを求めるには``posts.id``が先に決まっている必要があるため、``posts.uri``カラムに``https://localhost/``という仮のURIをまず入れてレコードを追加した後、決定した``posts.id``を基に``getObjectUri()``メソッドを使用して実際のURIを求めてレコードを更新するようになっています。
+
+それではウェブブラウザで<http://localhost:8000/>ページを開いた後、投稿を作成してみましょう：
+
+.投稿作成中
+image::home-2.png[投稿作成中]
+
+btn:[Post]ボタンを押して投稿を作成すると、残念ながら``404 Not Found``エラーが発生します：
+
+.404 Not Found
+image::404.png[404 Not Found]
+
+というのも、投稿パーマリンクにリダイレクトするよう実装したのに、まだ投稿ページを実装していないからです。しかし、それでも``posts``テーブルにはレコードが作成されているはずです。一度確認してみましょう：
+
+[source,console]
+$ echo "SELECT * FROM posts;" | sqlite3 -table microblog.sqlite3
+
+すると次のような結果が出力されるはずです：
+
+[cols="1,1,1,1,1,1"]
+|===
+| `id` | `uri` | `actor_id` | `content` | `url` | `created`
+
+| `1`
+| `http://localhost:8000/users/johndoe/posts/1`
+| `1`
+| `It's my first post!`
+| `http://localhost:8000/users/johndoe/posts/1`
+| `2024-09-02 08:10:55`
+|===
+
+=== 投稿ページ
+
+投稿作成後に``404 Not Found``エラーが発生しないよう、投稿ページを実装しましょう。
+
+__src/views.tsx__ファイルを開いて``Post``型を``import``します：
+
+[source,typescript]
+import type { Actor, Post, User } from "./schema.ts";
+
+そして``<PostPage>``コンポーネントおよび``<PostView>``コンポーネントを定義します：
+
+[source,tsx]
+----
+export interface PostPageProps extends ProfileProps, PostViewProps {}
+
+export const PostPage: FC<PostPageProps> = (props) => (
+  <>
+    <Profile
+      name={props.name}
+      username={props.username}
+      handle={props.handle}
+      followers={props.followers}
+    />
+    <PostView post={props.post} />
+  </>
+);
+
+export interface PostViewProps {
+  post: Post & Actor;
+}
+
+export const PostView: FC<PostViewProps> = ({ post }) => (
+  <article>
+    <header>
+      <ActorLink actor={post} />
+    </header>
+    {/* biome-ignore lint/security/noDangerouslySetInnerHtml: */}
+    <div dangerouslySetInnerHTML={{ __html: post.content }} />
+    <footer>
+      <a href={post.url ?? post.uri}>
+        <time datetime={new Date(post.created).toISOString()}>
+          {post.created}
+        </time>
+      </a>
+    </footer>
+  </article>
+);
+----
+
+これでデータベースから投稿データを読み込んで``<PostPage>``コンポーネントでレンダリングしましょう。__src/app.tsx__ファイルを開いて先ほど定義した``<PostPage>``コンポーネントを``import``します：
+
+[source,typescript,highlight=5]
+----
+import {
+  FollowerList,
+  Home,
+  Layout,
+  PostPage,
+  Profile,
+  SetupForm,
+} from "./views.tsx";
+----
+
+そして``GET /users/{username}/posts/{id}``リクエストハンドラを実装します：
+
+[source,tsx]
+----
+app.get("/users/:username/posts/:id", (c) => {
+  const post = db
+    .prepare<unknown[], Post & Actor & User>(
+      `
+      SELECT users.*, actors.*, posts.*
+      FROM posts
+      JOIN actors ON actors.id = posts.actor_id
+      JOIN users ON users.id = actors.user_id
+      WHERE users.username = ? AND posts.id = ?
+      `,
+    )
+    .get(c.req.param("username"), c.req.param("id"));
+  if (post == null) return c.notFound();
+
+  // biome-ignore lint/style/noNonNullAssertion: 常に1つのレコードを返す
+  const { followers } = db
+    .prepare<unknown[], { followers: number }>(
+      `
+      SELECT count(*) AS followers
+      FROM follows
+      WHERE follows.following_id = ?
+      `,
+    )
+    .get(post.actor_id)!;
+  return c.html(
+    <Layout>
+      <PostPage
+        name={post.name ?? post.username}
+        username={post.username}
+        handle={post.handle}
+        followers={followers}
+        post={post}
+      />
+    </Layout>,
+  );
+});
+----
+
+それでは先ほど``404 Not Found``エラーが発生した<http://localhost:8000/users/johndoe/posts/1>ページをウェブブラウザで開いてみましょう：
+
+.投稿ページ
+image::post-page.png[投稿ページ]
+
+=== ``Note``オブジェクト・ディスパッチャー
+
+それでは、他のMastodonのサーバーで投稿を照会できるか確認してみましょう。まず、``fedify tunnel``を利用してローカルサーバーを公開インターネットに露出します。
+
+その状態で、Mastodonの検索ボックスに記事のパーマリンクである<https://temp-address.serveo.net/users/johndoe/posts/1>（皆さんの固有の一時ドメインに置き換えてください）を入力してみます：
+
+.空の検索結果
+image::search-results-2.png[空の検索結果]
+
+残念ながら、検索結果は空です。投稿をActivityPubオブジェクトの形式で公開していないからです。では、投稿をActivityPubオブジェクトで露出させてみましょう。
+
+実装に先立ち、必要なライブラリをインストールする必要があります。Fedifyで時の表現に使用するlink:https://tc39.es/proposal-temporal/docs/[Temporal API]がまだNode.jsに組み込まれていないため、これをポリフィルするlink:https://github.com/js-temporal/temporal-polyfill[@js-temporal/polyfill]パッケージが必要です：
+
+[source,console]
+$ npm add @js-temporal/polyfill
+
+__src/federation.ts__ファイルを開き、インストールしたパッケージをインポートします：
+
+[source,typescript]
+import { Temporal } from "@js-temporal/polyfill";
+
+``Post``タイプとFedifyが提供する``PUBLIC_COLLECTION``定数もインポートします。
+
+[source,typescript,highlight=6,19]
+----
+import {
+  Accept,
+  Endpoints,
+  Follow,
+  Note,
+  PUBLIC_COLLECTION,
+  Person,
+  Undo,
+  createFederation,
+  exportJwk,
+  generateCryptoKeyPair,
+  getActorHandle,
+  importJwk,
+  type Recipient,
+} from "@fedify/fedify";
+import type {
+  Actor,
+  Key,
+  Post
+  User,
+} from "./schema.ts";
+----
+
+マイクロブログの投稿のような短い文章は、ActivityPubでは通常``Note``として表現されます。``Note``クラスのオブジェクト・ディスパッチャーは既に空の実装を作成していました：
+
+[source,typescript]
+----
+federation.setObjectDispatcher(
+  Note,
+  "/users/{identifier}/posts/{id}",
+  (ctx, values) => {
+    return null;
+  },
+);
+----
+
+これを以下のように修正します：
+
+[source,typescript]
+----
+federation.setObjectDispatcher(
+  Note,
+  "/users/{identifier}/posts/{id}",
+  (ctx, values) => {
+    const post = db
+      .prepare<unknown[], Post>(
+        `
+        SELECT posts.*
+        FROM posts
+        JOIN actors ON actors.id = posts.actor_id
+        JOIN users ON users.id = actors.user_id
+        WHERE users.username = ? AND posts.id = ?
+        `,
+      )
+      .get(values.identifier, values.id);
+    if (post == null) return null;
+    return new Note({
+      id: ctx.getObjectUri(Note, values),
+      attribution: ctx.getActorUri(values.identifier),
+      to: PUBLIC_COLLECTION,
+      cc: ctx.getFollowersUri(values.identifier),
+      content: post.content,
+      mediaType: "text/html",
+      published: Temporal.Instant.from(`${post.created.replace(" ", "T")}Z`),
+      url: ctx.getObjectUri(Note, values),
+    });
+  },
+);
+----
+
+``Note``オブジェクトを生成する際に設定されるプロパティ値は以下のような役割を果たします：
+
+- ``attribution``プロパティに``ctx.getActorUri(values.identifier)``を設定することで、この投稿の作成者が私たちが作成したアクターであることを示します。
+
+- ``to``プロパティに``PUBLIC_COLLECTION``を設定することで、この投稿が全体公開の投稿であることを示します。
+
+- ``cc``プロパティに``ctx.getFollowersUri(values.identifier)``を設定することで、この投稿がフォロワーに配信されることを示しますが、これ自体には大きな意味はありません。
+
+それでは、もう一度Mastodonの検索ボックスに投稿のパーマリンク（<https://temp-address.serveo.net/users/johndoe/posts/1>、ドメイン名は置き換えてください）を入力してみましょう：
+
+.Mastodon検索結果に作成した投稿が表示される
+image::search-results-3.png[Mastodon検索結果に作成した投稿が表示される]
+
+今回は検索結果に私たちが作成した投稿が正しく表示されていますね！
+
+=== ``Create(Note)``アクティビティの送信
+
+しかし、Mastodonで私たちが作成したアクターをフォローしても、新しく作成した投稿はMastodonのタイムラインには表示されません。なぜなら、Mastodonが新しい投稿を自動的に取得するのではなく、新しい投稿を作成した側が``Create(Note)``アクティビティを送信して、新しい投稿が作成されたことを通知する必要があるからです。
+
+投稿作成時に``Create(Note)``アクティビティを送信するようにコードを修正しましょう。__src/app.tsx__ファイルを開き、Fedifyが提供する``Create``クラスを``import``します：
+
+[source,typescript]
+import { Create, Note } from "@fedify/fedify";
+
+そして、``POST /users/{username}/posts``リクエストハンドラを次のように修正します：
+
+[source,typescript,highlight=4,24,26..40]
+----
+app.post("/users/:username/posts", async (c) => {
+  // ... 省略 ...
+  const ctx = fedi.createContext(c.req.raw, undefined);
+  const post: Post | null = db.transaction(() => {
+    const post = db
+      .prepare<unknown[], Post>(
+        `
+        INSERT INTO posts (uri, actor_id, content)
+        VALUES ('https://localhost/', ?, ?)
+        RETURNING *
+        `,
+      )
+      .get(actor.id, stringifyEntities(content, { escapeOnly: true }));
+    if (post == null) return null;
+    const url = ctx.getObjectUri(Note, {
+      identifier: username,
+      id: post.id.toString(),
+    }).href;
+    db.prepare("UPDATE posts SET uri = ?, url = ? WHERE id = ?").run(
+      url,
+      url,
+      post.id,
+    );
+    return post;
+  })();
+  if (post == null) return c.text("Failed to create post", 500);
+  const noteArgs = { identifier: username, id: post.id.toString() };
+  const note = await ctx.getObject(Note, noteArgs);
+  await ctx.sendActivity(
+    { identifier: username },
+    "followers",
+    new Create({
+      id: new URL("#activity", note?.id ?? undefined),
+      object: note,
+      actors: note?.attributionIds,
+      tos: note?.toIds,
+      ccs: note?.ccIds,
+    }),
+  );
+  return c.redirect(ctx.getObjectUri(Note, noteArgs).href);
+});
+----
+
+``getObject()``メソッドは、オブジェクト・ディスパッチャーが作成するActivityPubオブジェクトを返します。ここでは``Note``オブジェクトを返すでしょう。その``Note``オブジェクトを``Create``オブジェクトを生成する際に``object``プロパティに設定します。アクティビティの受信者を示す``tos``（``to``の複数形）および``ccs``（``cc``の複数形）プロパティは、``Note``オブジェクトと同じように設定します。アクティビティの``id``は任意の一意なURIを生成して設定します。
+
+TIP: アクティビティオブジェクトの``id``プロパティには、必ずしもアクセス可能なURIを設定する必要はありません。ただ一意であれば十分です。
+
+``sendActivity()``メソッドの2番目のパラメータには受信者が入りますが、ここでは``"followers"``という特別なオプションを指定しました。このオプションを指定すると、先ほど実装したフォロワーコレクション・ディスパッチャーを使用して、全てのフォロワーにアクティビティを送信します。
+
+さて、実装が完了したので、``Create(Note)``アクティビティが正しく送信されるか確認してみましょう。
+
+``fedify tunnel``コマンドでローカルサーバーをパブリックインターネットに公開した状態で、link:https://activitypub.academy/[ActivityPub.Academy]に入り、`+@johndoe@temp-address.serveo.net+`（ドメイン名は割り当てられた一時的なドメイン名に置き換えてください）をフォローします。フォロワーリストでフォローリクエストが確実に承認されたことを確認した後、ウェブブラウザで<https://temp-address.serveo.net/>（同様に、ドメイン名は置き換えてください）ページに入り、新しい投稿を作成します。
+
+CAUTION: アクティビティ送信をテストする際は、必ず__localhost__ではなく、パブリックインターネットからアクセス可能なドメイン名で接続する必要があります。ActivityPubオブジェクトのIDを決定する際、リクエストが来たドメイン名を基準にURIを構築するためです。
+
+``Create(Note)``アクティビティがうまく送信されたかを確認するために、ActivityPub.AcademyのActivity Logを見てみましょう：
+
+.受信された``Create(Note)``アクティビティが表示されているActivity Log
+image::activity-log-5.png[受信されたCreate(Note)アクティビティが表示されているActivity Log]
+
+うまく届いていますね。それではActivityPub.Academyでタイムラインを確認してみましょう：
+
+.ActivityPub.Academyのタイムラインに作成した投稿がよく表示されている
+image::academy-timeline.png[ActivityPub.Academyのタイムラインに作成した投稿がよく表示されている]
+
+成功しました！
+
 == 著者とライセンス
 
 === 著者：洪 民憙（ホン・ミンヒ）
