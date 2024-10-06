@@ -1599,6 +1599,172 @@ $ echo "SELECT count(*) FROM follows;" | sqlite3 -table microblog.sqlite3
 | `0`
 |===
 
+== フォロワーリスト
+
+毎回フォロワーリストを``sqlite3``コマンドで見るのは面倒なので、ウェブでフォロワーリストを見られるようにしましょう。
+
+まず__src/views.tsx__ファイルに新しいコンポーネントを追加することから始めます。``Actor``型を``import``してください：
+
+[source,typescript]
+import type { Actor } from "./schema.ts";
+
+そして``<FollowerList>``コンポーネントと``<ActorLink>``コンポーネントを定義します：
+
+[source,tsx]
+----
+export interface FollowerListProps {
+  followers: Actor[];
+}
+
+export const FollowerList: FC<FollowerListProps> = ({ followers }) => (
+  <>
+    <h2>フォロワー</h2>
+    <ul>
+      {followers.map((follower) => (
+        <li key={follower.id}>
+          <ActorLink actor={follower} />
+        </li>
+      ))}
+    </ul>
+  </>
+);
+
+export interface ActorLinkProps {
+  actor: Actor;
+}
+
+export const ActorLink: FC<ActorLinkProps> = ({ actor }) => {
+  const href = actor.url ?? actor.uri;
+  return actor.name == null ? (
+    <a href={href} class="secondary">
+      {actor.handle}
+    </a>
+  ) : (
+    <>
+      <a href={href}>{actor.name}</a>{" "}
+      <small>
+        (
+        <a href={href} class="secondary">
+          {actor.handle}
+        </a>
+        )
+      </small>
+    </>
+  );
+};
+----
+
+``<ActorLink>``コンポーネントは1つのアクターを表現するのに使用され、``<FollowerList>``コンポーネントは``<ActorList>``コンポーネントを使用してフォロワーリストを表現するのに使用されます。ご覧の通り、JSXには条件文や繰り返し文がないため、三項演算子と``Array.map()``メソッドを使用しています。
+
+それではフォロワーリストを表示するエンドポイントを作成しましょう。__src/app.tsx__ファイルを開いて``<FollowerList>``コンポーネントを``import``します：
+
+[source,typescript]
+import { FollowerList, Layout, Profile, SetupForm } from "./views.tsx";
+
+そして``GET /users/{username}/followers``に対するリクエストハンドラを追加します：
+
+[source,tsx]
+----
+app.get("/users/:username/followers", async (c) => {
+  const followers = db
+    .prepare<unknown[], Actor>(
+      `
+      SELECT followers.*
+      FROM follows
+      JOIN actors AS followers ON follows.follower_id = followers.id
+      JOIN actors AS following ON follows.following_id = following.id
+      JOIN users ON users.id = following.user_id
+      WHERE users.username = ?
+      ORDER BY follows.created DESC
+      `,
+    )
+    .all(c.req.param("username"));
+  return c.html(
+    <Layout>
+      <FollowerList followers={followers} />
+    </Layout>,
+  );
+});
+----
+
+それでは、うまく表示されるか確認してみましょう。フォロワーがいるはずなので、``fedify tunnel``を起動した状態で他のMastodonサーバーやlink:https://activitypub.academy/[ActivityPub.Academy]から我々が作成したアクターをフォローしましょう。フォローリクエストが承認された後、ウェブブラウザで<http://localhost:8000/users/johndoe/followers>ページを開くと、以下のように表示されるはずです：
+
+.フォロワーリストページ
+image::followers-list.png[フォロワーリストページ]
+
+フォロワーリストを作成したので、プロフィールページでフォロワー数も表示すると良いでしょう。__src/views.tsx__ファイルを再度開き、``<Profile>``コンポーネントを以下のように修正します：
+
+[source,tsx,highlight=3,5,10,12,20..23]
+----
+export interface ProfileProps {
+  name: string;
+  username: string;
+  handle: string;
+  followers: number;
+}
+
+export const Profile: FC<ProfileProps> = ({
+  name,
+  username,
+  handle,
+  followers,
+}) => (
+  <>
+    <hgroup>
+      <h1>
+        <a href={`/users/${username}`}>{name}</a>
+      </h1>
+      <p>
+        <span style="user-select: all;">{handle}</span> &middot;{" "}
+        <a href={`/users/${username}/followers`}>
+          {followers === 1 ? "1 follower" : `${followers} followers`}
+        </a>
+      </p>
+    </hgroup>
+  </>
+);
+----
+
+``ProfileProps``には2つのプロップが追加されました。``followers``は文字通りフォロワー数を含むプロップです。``username``はフォロワーリストへのリンクを張るためにURLに入れるユーザー名を受け取ります。
+
+それでは再び__src/app.tsx__ファイルに戻り、``GET /users/{username}``リクエストハンドラを次のように修正します：
+
+[source,tsx,highlight=5..15,21,23]
+----
+app.get("/users/:username", async (c) => {
+  // ... 省略 ...
+  if (user == null) return c.notFound();
+
+  // biome-ignore lint/style/noNonNullAssertion: 常に1つのレコードを返す
+  const { followers } = db
+    .prepare<unknown[], { followers: number }>(
+      `
+      SELECT count(*) AS followers
+      FROM follows
+      JOIN actors ON follows.following_id = actors.id
+      WHERE actors.user_id = ?
+      `,
+    )
+    .get(user.id)!;
+  // ... 省略 ...
+  return c.html(
+    <Layout>
+      <Profile
+        name={user.name ?? user.username}
+        username={user.username}
+        handle={handle}
+        followers={followers}
+      />
+    </Layout>,
+  );
+});
+----
+
+データベース内の``follows``テーブルのレコード数を数えるSQLが追加されました。さて、それでは変更されたプロフィールページを確認してみましょう。ウェブブラウザで<http://localhost:8000/users/johndoe>ページを開くと以下のように表示されるはずです：
+
+.変更されたプロフィールページ
+image::profile-page-3.png[変更されたプロフィールページ]
+
 == 著者とライセンス
 
 === 著者：洪 民憙（ホン・ミンヒ）
