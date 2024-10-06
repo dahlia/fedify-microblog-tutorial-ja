@@ -244,7 +244,7 @@ let foo: string;
 ----
 foo = 123;  // <1>
 ----
-<1> ts(2322): 型 'number' を型 'string' に割り当てることはできません。
+<1> ts(2322): 型``number``を型``string``に割り当てることはできません。
 
 コーディング中に赤い下線が表示されたら、無視せずに対処してください。無視してプログラムを実行すると、その部分で実際にエラーが発生する可能性が高いです。
 
@@ -259,7 +259,7 @@ const bar: string | null = someFunction();
 ----
 const firstChar = bar.charAt(0);  // <1>
 ----
-<1> ts(18047): 'bar' は 'null' の可能性があります。
+<1> ts(18047): ``bar``は``null``の可能性があります。
 
 上記のように型エラーが発生します。``bar``が場合によっては``null``である可能性があり、その場合に``null.charAt(0)``を呼び出すとエラーが発生する可能性があるため、コードを修正するよう指摘しています。このような場合、以下のように``null``の場合の処理を追加する必要があります：
 
@@ -967,6 +967,251 @@ Person {
   inbox: URL "http://localhost:8000/users/johndoe/inbox",
   endpoints: Endpoints { sharedInbox: URL "http://localhost:8000/inbox" }
 }
+
+== 暗号鍵ペア
+
+次に実装するのは、署名のためのアクターの暗号鍵です。ActivityPubではアクターがアクティビティを作成して送信しますが、このときアクティビティを本当にそのアクターが作成したことを証明するためにlink:https://ja.wikipedia.org/wiki/%E3%83%87%E3%82%B8%E3%82%BF%E3%83%AB%E7%BD%B2%E5%90%8D[デジタル署名]を行います。そのために、アクターはペアになった自身だけの秘密鍵（private key）と公開鍵（public key）のペアを作成して持っており、その公開鍵を他のアクターも見られるように公開します。アクターはアクティビティを受信する際に、送信者の公開鍵とアクティビティの署名を検証して、そのアクティビティが本当に送信者が生成したものかどうかを確認します。署名と署名の検証はFedifyが自動的に行いますが、鍵ペアを生成して保存するのは直接実装する必要があります。
+
+CAUTION: 秘密鍵は、その名前が示すように署名を行う主体以外はアクセスできないようにする必要があります。一方、公開鍵はその用途自体が公開することなので、誰でもアクセスしても問題ありません。
+
+=== テーブルの作成
+
+秘密鍵と公開鍵のペアを保存する``keys``テーブルを__src/schema.sql__に定義します：
+
+[source,sql]
+CREATE TABLE IF NOT EXISTS keys (
+  user_id     INTEGER NOT NULL REFERENCES users (id),
+  type        TEXT    NOT NULL CHECK (type IN ('RSASSA-PKCS1-v1_5', 'Ed25519')),
+  private_key TEXT    NOT NULL CHECK (private_key <> ''),
+  public_key  TEXT    NOT NULL CHECK (public_key <> ''),
+  created     TEXT    NOT NULL DEFAULT (CURRENT_TIMESTAMP) CHECK (created <> ''),
+  PRIMARY KEY (user_id, type)
+);
+
+テーブルをよく見ると、``type``カラムには2種類の値のみが許可されていることがわかります。一つはlink:https://www.rfc-editor.org/rfc/rfc2313[RSA-PKCS#1-v1.5]形式で、もう一つはlink:https://ed25519.cr.yp.to/[Ed25519]形式です。（それぞれが何を意味するかは、このチュートリアルでは重要ではありません）主キーが``(user_id, type)``にかかっているので、1ユーザーに対して最大二つの鍵ペアが存在できます。
+
+TIP: このチュートリアルで詳しく説明することはできませんが、2024年9月現在、ActivityPubネットワークはRSA-PKCS#1-v1.5形式からEd25519形式に移行中であると知っておくと良いでしょう。あるソフトウェアはRSA-PKCS#1-v1.5形式のみを受け入れ、あるソフトウェアはEd25519形式を受け入れます。したがって、両方と通信するためには、二つの鍵ペアが両方とも必要になるのです。
+
+``private_key``および``public_key``カラムは文字列を受け取れるようになっていますが、ここにはJSONデータを入れる予定です。秘密鍵と公開鍵をJSONでエンコードする方法については、後で順を追って説明します。
+
+では``keys``テーブルを作成しましょう：
+
+[source,console]
+$ sqlite3 microblog.sqlite3 < src/schema.sql
+
+``keys``テーブルに保存されるレコードをJavaScriptで表現する``Key``型も__src/schema.ts__ファイルに定義します：
+
+[source,typescript]
+export interface Key {
+  user_id: number;
+  type: "RSASSA-PKCS1-v1_5" | "Ed25519";
+  private_key: string;
+  public_key: string;
+  created: string;
+}
+
+=== 鍵ペアディスパッチャー
+
+これで鍵ペアを生成して読み込むコードを書く必要があります。
+
+__src/federation.ts__ファイルを開き、Fedifyが提供する``exportJwk()``、``generateCryptoKeyPair()``、``importJwk()``関数と先ほど定義した``Key``型を``import``しましょう：
+
+[source,typescript,highlight=5..7,9]
+----
+import {
+  Endpoints,
+  Person,
+  createFederation,
+  exportJwk,
+  generateCryptoKeyPair,
+  importJwk,
+} from "@fedify/fedify";
+import type { Actor, Key, User } from "./schema.ts";
+----
+
+そしてアクターディスパッチャー部分を次のように修正します：
+
+[source,typescript]
+----
+federation
+  .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+    const user = db
+      .prepare<unknown[], User & Actor>(
+        `
+        SELECT * FROM users
+        JOIN actors ON (users.id = actors.user_id)
+        WHERE users.username = ?
+        `,
+      )
+      .get(identifier);
+    if (user == null) return null;
+
+    const keys = await ctx.getActorKeyPairs(identifier);
+    return new Person({
+      id: ctx.getActorUri(identifier),
+      preferredUsername: identifier,
+      name: user.name,
+      inbox: ctx.getInboxUri(identifier),
+      endpoints: new Endpoints({
+        sharedInbox: ctx.getInboxUri(),
+      }),
+      url: ctx.getActorUri(identifier),
+      publicKey: keys[0].cryptographicKey,
+      assertionMethods: keys.map((k) => k.multikey),
+    });
+  })
+  .setKeyPairsDispatcher(async (ctx, identifier) => {
+    const user = db
+      .prepare<unknown[], User>("SELECT * FROM users WHERE username = ?")
+      .get(identifier);
+    if (user == null) return [];
+    const rows = db
+      .prepare<unknown[], Key>("SELECT * FROM keys WHERE keys.user_id = ?")
+      .all(user.id);
+    const keys = Object.fromEntries(
+      rows.map((row) => [row.type, row]),
+    ) as Record<Key["type"], Key>;
+    const pairs: CryptoKeyPair[] = [];
+    // ユーザーがサポートする2つの鍵形式（RSASSA-PKCS1-v1_5およびEd25519）それぞれについて
+    // 鍵ペアを保有しているか確認し、なければ生成後データベースに保存：
+    for (const keyType of ["RSASSA-PKCS1-v1_5", "Ed25519"] as const) {
+      if (keys[keyType] == null) {
+        logger.debug(
+          "ユーザー{identifier}は{keyType}鍵を持っていません。作成します...",
+          { identifier, keyType },
+        );
+        const { privateKey, publicKey } = await generateCryptoKeyPair(keyType);
+        db.prepare(
+          `
+          INSERT INTO keys (user_id, type, private_key, public_key)
+          VALUES (?, ?, ?, ?)
+          `,
+        ).run(
+          user.id,
+          keyType,
+          JSON.stringify(await exportJwk(privateKey)),
+          JSON.stringify(await exportJwk(publicKey)),
+        );
+        pairs.push({ privateKey, publicKey });
+      } else {
+        pairs.push({
+          privateKey: await importJwk(
+            JSON.parse(keys[keyType].private_key),
+            "private",
+          ),
+          publicKey: await importJwk(
+            JSON.parse(keys[keyType].public_key),
+            "public",
+          ),
+        });
+      }
+    }
+    return pairs;
+  });
+----
+
+まず最初に注目すべきは、``setActorDispatcher()``メソッドに連続して呼び出されている``setKeyPairsDispatcher()``メソッドです。このメソッドは、コールバック関数から返された鍵ペアをアカウントに紐付ける役割を果たします。このように鍵ペアを紐付けることで、Fedifyがアクティビティを送信する際に自動的に登録された秘密鍵でデジタル署名を追加します。
+
+``generateCryptoKeyPair()``関数は新しい秘密鍵と公開鍵のペアを生成し、``CryptoKeyPair``オブジェクトとして返します。参考までに、``CryptoKeyPair``型は``{ privateKey: CryptoKey; publicKey: CryptoKey; }``形式です。
+
+``exportJwk()``関数は``CryptoKey``オブジェクトをJWK形式で表現したオブジェクトを返します。JWK形式が何かを知る必要はありません。単に暗号鍵をJSONで表現する標準的な形式だと理解すれば十分です。``CryptoKey``は暗号鍵をJavaScriptオブジェクトとして表現するためのウェブ標準の型です。
+
+``importJwk()``関数はJWK形式で表現された鍵を``CryptoKey``オブジェクトに変換します。``exportJwk()``関数の逆だと理解すれば良いでしょう。
+
+さて、では再び``setActorDispatcher()``メソッドに目を向けましょう。``getActorKeyPairs()``というメソッドが使われていますが、このメソッドは名前の通りアクターの鍵ペアを返します。アクターの鍵ペアは、直前に見た``setKeyPairsDispatcher()``メソッドで読み込まれたまさにその鍵ペアです。我々はRSA-PKCS#1-v1.5とEd25519形式の2つの鍵ペアを読み込んだので、``getActorKeyPairs()``メソッドは2つの鍵ペアの配列を返します。配列の各要素は鍵ペアを様々な形式で表現したオブジェクトですが、次のような形をしています：
+
+[source,typescript]
+----
+interface ActorKeyPair {
+  privateKey: CryptoKey;              // <1>
+  publicKey: CryptoKey;               // <2>
+  keyId: URL;                         // <3>
+  cryptographicKey: CryptographicKey; // <4>
+  multikey: Multikey;                 // <5>
+}
+----
+<1> 秘密鍵
+<2> 公開鍵
+<3> 鍵の一意な識別URI
+<4> 公開鍵の別の形式
+<5> 公開鍵のさらに別の形式
+
+``CryptoKey``と``CryptographicKey``と``Multikey``がそれぞれどう違うのか、なぜこのように複数の形式が必要なのかは、ここで説明するには複雑すぎます。ただ、現時点では``Person``オブジェクトを初期化する際に``publicKey``属性は``CryptographicKey``形式を受け取り、``assertionMethods``属性は``Multikey[]``（``Multikey``の配列をTypeScriptでこのように表記）形式を受け取るということだけ覚えておきましょう。
+
+ところで、``Person``オブジェクトには公開鍵を持つ属性が``publicKey``と``assertionMethods``の2つもあるのはなぜでしょうか？ActivityPubには元々``publicKey``属性しかありませんでしたが、後から複数の鍵を登録できるように``assertionMethods``属性が追加されました。先ほどRSA-PKCS#1-v1.5形式とEd25519形式の鍵を両方生成したのと同じような理由で、様々なソフトウェアとの互換性のために両方の属性を設定しているのです。よく見ると、レガシーな属性である``publicKey``にはレガシーな鍵形式であるRSA-PKCS#1-v1.5鍵のみを登録していることがわかります。（配列の最初の項目にRSA-PKCS#1-v1.5鍵ペアが、2番目の項目にEd25519鍵ペアが入ります）
+
+[TIP]
+====
+実は``publicKey``属性も複数の鍵を含めることはできます。しかし、多くのソフトウェアが既に``publicKey``属性には単一の鍵しか入らないという前提で実装されているため、誤動作することが多いのです。これを避けるために``assertionMethods``という新しい属性が提案されたのです。
+
+これに関して興味が湧いた方はlink:https://w3id.org/fep/521a[FEP-521a]文書を参照してください。
+====
+
+=== テスト
+
+さて、アクターオブジェクトに暗号鍵を登録したので、うまく動作するか確認しましょう。次のコマンドでアクターを照会します。
+
+[source,console]
+fedify lookup http://localhost:8000/users/johndoe
+
+正常に動作すれば、以下のような結果が出力されます：
+
+[listing]
+----
+✔ Looking up the object...
+Person {
+  id: URL "http://localhost:8000/users/johndoe",
+  name: "John Doe",
+  url: URL "http://localhost:8000/users/johndoe",
+  preferredUsername: "johndoe",
+  publicKey: CryptographicKey {
+    id: URL "http://localhost:8000/users/johndoe#main-key",
+    owner: URL "http://localhost:8000/users/johndoe",
+    publicKey: CryptoKey {
+      type: "public",
+      extractable: true,
+      algorithm: {
+        name: "RSASSA-PKCS1-v1_5",
+        modulusLength: 4096,
+        publicExponent: Uint8Array(3) [ 1, 0, 1 ],
+        hash: { name: "SHA-256" }
+      },
+      usages: [ "verify" ]
+    }
+  },
+  assertionMethods: [
+    Multikey {
+      id: URL "http://localhost:8000/users/johndoe#main-key",
+      controller: URL "http://localhost:8000/users/johndoe",
+      publicKey: CryptoKey {
+        type: "public",
+        extractable: true,
+        algorithm: {
+          name: "RSASSA-PKCS1-v1_5",
+          modulusLength: 4096,
+          publicExponent: Uint8Array(3) [ 1, 0, 1 ],
+          hash: { name: "SHA-256" }
+        },
+        usages: [ "verify" ]
+      }
+    },
+    Multikey {
+      id: URL "http://localhost:8000/users/johndoe#key-2",
+      controller: URL "http://localhost:8000/users/johndoe",
+      publicKey: CryptoKey {
+        type: "public",
+        extractable: true,
+        algorithm: { name: "Ed25519" },
+        usages: [ "verify" ]
+      }
+    }
+  ],
+  inbox: URL "http://localhost:8000/users/johndoe/inbox",
+  endpoints: Endpoints { sharedInbox: URL "http://localhost:8000/inbox" }
+}
+----
+
+``Person``オブジェクトの``publicKey``属性にRSA-PKCS#1-v1.5形式の``CryptographicKey``オブジェクトが1つ、``assertionMethods``属性にRSA-PKCS#1-v1.5形式とEd25519形式の``Multikey``オブジェクトが2つ入っていることが確認できます。
 
 == 著者とライセンス
 
