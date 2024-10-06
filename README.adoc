@@ -2815,6 +2815,79 @@ $ echo "SELECT * FROM follows WHERE follower_id = 1;" | sqlite3 -table microblog
 | `2024-09-02 14:11:17`
 |===
 
+== フォローリスト
+
+我々が作成したアクターがフォローしているアクターのリストを表示するページを作成しましょう。
+
+まず__src/views.tsx__ファイルを開き、``<FollowingList>``コンポーネントを追加します：
+
+[source,tsx]
+----
+export interface FollowingListProps {
+  following: Actor[];
+}
+
+export const FollowingList: FC<FollowingListProps> = ({ following }) => (
+  <>
+    <h2>Following</h2>
+    <ul>
+      {following.map((actor) => (
+        <li key={actor.id}>
+          <ActorLink actor={actor} />
+        </li>
+      ))}
+    </ul>
+  </>
+);
+----
+
+次に、__src/app.tsx__ファイルを開き、先ほど定義した``<FollowingList>``コンポーネントをインポートします：
+
+[source,typescript,highlight=3]
+----
+import {
+  FollowerList,
+  FollowingList,
+  Home,
+  Layout,
+  PostList,
+  PostPage,
+  Profile,
+  SetupForm,
+} from "./views.tsx";
+----
+
+そして``GET /users/{username}/following``リクエストに対するハンドラーを追加します：
+
+[source,tsx]
+----
+app.get("/users/:username/following", async (c) => {
+  const following = db
+    .prepare<unknown[], Actor>(
+      `
+      SELECT following.*
+      FROM follows
+      JOIN actors AS followers ON follows.follower_id = followers.id
+      JOIN actors AS following ON follows.following_id = following.id
+      JOIN users ON users.id = followers.user_id
+      WHERE users.username = ?
+      ORDER BY follows.created DESC
+      `,
+    )
+    .all(c.req.param("username"));
+  return c.html(
+    <Layout>
+      <FollowingList following={following} />
+    </Layout>,
+  );
+});
+----
+
+正しく実装されたかどうか確認するために、ウェブブラウザで<http://localhost:8000/users/johndoe/following>ページを開いてみましょう：
+
+.フォローリスト
+image::following-list.png[フォローリスト]
+
 == 著者とライセンス
 
 === 著者：洪 民憙（ホン・ミンヒ）
