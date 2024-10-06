@@ -677,38 +677,30 @@ export default federation;
 ----
 CREATE TABLE IF NOT EXISTS actors (
   id               INTEGER NOT NULL PRIMARY KEY,
-  user_id          INTEGER          REFERENCES users (id),
-  uri              TEXT    NOT NULL UNIQUE CHECK (uri <> ''),
-  handle           TEXT    NOT NULL UNIQUE CHECK (handle <> ''),
-  name             TEXT,
-  inbox_url        TEXT    NOT NULL UNIQUE CHECK (inbox_url LIKE 'https://%'
+  user_id          INTEGER          REFERENCES users (id),                       -- <1>
+  uri              TEXT    NOT NULL UNIQUE CHECK (uri <> ''),                    -- <2>
+  handle           TEXT    NOT NULL UNIQUE CHECK (handle <> ''),                 -- <3>
+  name             TEXT,                                                         -- <4>
+  inbox_url        TEXT    NOT NULL UNIQUE CHECK (inbox_url LIKE 'https://%'     -- <5>
                                                   OR inbox_url LIKE 'http://%'),
-  shared_inbox_url TEXT                    CHECK (shared_inbox_url
+  shared_inbox_url TEXT                    CHECK (shared_inbox_url               -- <6>
                                                   LIKE 'https://%'
                                                   OR shared_inbox_url
                                                   LIKE 'http://%'),
-  url              TEXT                    CHECK (url LIKE 'https://%'
+  url              TEXT                    CHECK (url LIKE 'https://%'           -- <7>
                                                   OR url LIKE 'http://%'),
-  created          TEXT    NOT NULL DEFAULT (CURRENT_TIMESTAMP)
+  created          TEXT    NOT NULL DEFAULT (CURRENT_TIMESTAMP)                  -- <8>
                                            CHECK (created <> '')
 );
 ----
-
-- ``user_id``カラムは``users``カラムと連携するための外部キーです。該当レコードがリモートアクターを表す場合は``NULL``が入りますが、現在のインスタンスサーバーのアカウントの場合は該当アカウントの``users.id``値が入ります。
-
-- ``uri``カラムはアクターIDと呼ばれるアクターの一意なURIを含みます。アクターを含むすべてのActivityPubオブジェクトはURI形式の一意なIDを持ちます。したがって、空にすることはできず、重複もできません。
-
-- ``handle``カラムは``+@johndoe@example.com+``形式のフェディバースハンドルを含みます。同様に、空にすることはできず、重複もできません。
-
-- ``name``カラムはUIに表示される名前を含みます。通常はフルネームやニックネームが入ります。ただし、ActivityPub仕様に従い、このカラムは空になる可能性があります。
-
-- ``inbox_url``カラムは該当アクターのインボックス（inbox）URLを含みます。インボックスが何であるかについては後で詳しく説明しますが、現時点ではアクターに必須で存在しなければならないということだけ覚えておいてください。このカラムも空にすることはできず、重複もできません。
-
-- ``shared_inbox_url``カラムは該当アクターの共有インボックス（shared inbox）URLを含みます。これについても後で詳しく説明します。必須ではないため、空になる可能性があり、カラム名の通り他のアクターと同じ共有インボックスURLを共有することもできます。
-
-- ``url``カラムは該当アクターのプロフィールURLを含みます。プロフィールURLとは、ウェブブラウザで開いて見ることができるプロフィールページのURLを意味します。アクターのIDとプロフィールURLが同じ場合もありますが、サービスによって異なる場合もあるため、その場合にこのカラムにプロフィールURLを含めます。空になる可能性があります。
-
-- ``created``カラムはレコードが作成された時点を記録します。空にすることはできず、デフォルトで挿入時点の時刻が記録されます。
+<1> ``user_id``カラムは``users``カラムと連携するための外部キーです。該当レコードがリモートアクターを表す場合は``NULL``が入りますが、現在のインスタンスサーバーのアカウントの場合は該当アカウントの``users.id``値が入ります。
+<2> ``uri``カラムはアクターIDと呼ばれるアクターの一意なURIを含みます。アクターを含むすべてのActivityPubオブジェクトはURI形式の一意なIDを持ちます。したがって、空にすることはできず、重複もできません。
+<3> ``handle``カラムは``+@johndoe@example.com+``形式のフェディバースハンドルを含みます。同様に、空にすることはできず、重複もできません。
+<4> ``name``カラムはUIに表示される名前を含みます。通常はフルネームやニックネームが入ります。ただし、ActivityPub仕様に従い、このカラムは空になる可能性があります。
+<5> ``inbox_url``カラムは該当アクターのインボックス（inbox）URLを含みます。インボックスが何であるかについては後で詳しく説明しますが、現時点ではアクターに必須で存在しなければならないということだけ覚えておいてください。このカラムも空にすることはできず、重複もできません。
+<6> ``shared_inbox_url``カラムは該当アクターの共有インボックス（shared inbox）URLを含みます。これについても後で詳しく説明します。必須ではないため、空になる可能性があり、カラム名の通り他のアクターと同じ共有インボックスURLを共有することもできます。
+<7> ``url``カラムは該当アクターのプロフィールURLを含みます。プロフィールURLとは、ウェブブラウザで開いて見ることができるプロフィールページのURLを意味します。アクターのIDとプロフィールURLが同じ場合もありますが、サービスによって異なる場合もあるため、その場合にこのカラムにプロフィールURLを含めます。空になる可能性があります。
+<8> ``created``カラムはレコードが作成された時点を記録します。空にすることはできず、デフォルトで挿入時点の時刻が記録されます。
 
 さて、これで__src/schema.sql__ファイルを__microblog.sqlite3__データベースファイルに適用しましょう：
 
