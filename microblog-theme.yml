@@ -7,19 +7,56 @@ font:
     merge: true
     Noto Serif JP: NotoSerifCJKjp-VF.ttf
     Noto Sans JP: NotoSansCJKjp-VF.ttf
-    Noto Sans Mono JP: NotoSansMonoCJKjp-VF.ttf
+    Sarasa Mono J:
+      normal: SarasaMonoJ-Regular.ttf
+      italic: SarasaMonoJ-Italic.ttf
+      bold: SarasaMonoJ-Bold.ttf
+      bold_italic: SarasaMonoJ-BoldItalic.ttf
     Noto Sans Symbols 2: NotoSansSymbols2-Regular.ttf
   fallbacks: [Noto Sans Symbols 2, Noto Serif]
 page:
   size: A5
+  margin: 30
 base:
   text-align: left
   font-family: Noto Serif JP
+  font-color: "#000000"
+  font-size: 9
 heading:
   font-family: Noto Sans JP
+  font-color: "#000000"
+heading-h1:
+  font-size: 18
+heading-h2:
+  font-size: 16
+heading-h3:
+  font-size: 14
+heading-h4:
+  font-size: 12
+heading-h5:
+  font-size: 10
+heading-h6:
+  font-size: 8
+admonition:
+  font-size: 8
+admonition-label:
+  font-family: Noto Sans JP
+  font-color: "#000000"
+  font-size: 8
+button:
+  font-family: Noto Sans JP
+  font-color: "#000000"
+  content: "%s"
+menu:
+  font-family: Noto Sans JP
+  font-color: "#000000"
+  content: "%s"
 codespan:
-  font-family: Noto Sans Mono JP
+  font-family: Sarasa Mono J
 code:
+  border-width: 0
+  padding: 5
   font-family: $codespan-font-family
+  font-size: 8
 kbd:
   font-family: $codespan-font-family

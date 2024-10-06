@@ -18,8 +18,13 @@ fi
 if [[ ! -f NotoSansCJKjp-VF.ttf ]]; then
   wget https://github.com/notofonts/noto-cjk/raw/refs/heads/main/Sans/Variable/TTF/NotoSansCJKjp-VF.ttf
 fi
-if [[ ! -f NotoSansMonoCJKjp-VF.ttf ]]; then
-  wget https://github.com/notofonts/noto-cjk/raw/refs/heads/main/Sans/Variable/TTF/Mono/NotoSansMonoCJKjp-VF.ttf
+if ! [[ -f SarasaMonoJ-Regular.ttf && -f SarasaMonoJ-Bold.ttf && \
+        -f SarasaMonoJ-Italic.ttf  && -f SarasaMonoJ-BoldItalic.ttf ]]; then
+  tmp="$(mktemp -d)"
+  pushd "$tmp"
+  wget https://github.com/be5invis/Sarasa-Gothic/releases/download/v1.0.21/SarasaMonoJ-TTF-1.0.21.7z
+  popd
+  7z x "$tmp/SarasaMonoJ-TTF-1.0.21.7z"
 fi
 if [[ ! -f NotoSansSymbols2-Regular.ttf ]]; then
   tmp="$(mktemp -d)"
