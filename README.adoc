@@ -2888,6 +2888,142 @@ app.get("/users/:username/following", async (c) => {
 .フォローリスト
 image::following-list.png[フォローリスト]
 
+== フォロー数
+
+フォロワー数を表示しているのと同様に、フォロー数も表示する必要があります。
+
+__src/views.tsx__ファイルを開き、``<Profile>``コンポーネントを次のように修正します：
+
+[source,tsx,highlight=5,13,23..24]
+----
+export interface ProfileProps {
+  name: string;
+  username: string;
+  handle: string;
+  following: number;
+  followers: number;
+}
+
+export const Profile: FC<ProfileProps> = ({
+  name,
+  username,
+  handle,
+  following,
+  followers,
+}) => (
+  <>
+    <hgroup>
+      <h1>
+        <a href={`/users/${username}`}>{name}</a>
+      </h1>
+      <p>
+        <span style="user-select: all;">{handle}</span> &middot;{" "}
+        <a href={`/users/${username}/following`}>{following} following</a>{" "}
+        &middot;{" "}
+        <a href={`/users/${username}/followers`}>
+          {followers === 1 ? "1 follower" : `${followers} followers`}
+        </a>
+      </p>
+    </hgroup>
+  </>
+);
+----
+
+``<PostPage>``コンポーネントも次のように修正します：
+
+[source,tsx,highlight=9]
+----
+export interface PostPageProps extends ProfileProps, PostViewProps {}
+
+export const PostPage: FC<PostPageProps> = (props) => (
+  <>
+    <Profile
+      name={props.name}
+      username={props.username}
+      handle={props.handle}
+      following={props.following}
+      followers={props.followers}
+    />
+    <PostView post={props.post} />
+  </>
+);
+----
+
+では、実際にデータベースを照会してフォロー数を取得するコードを書く必要があります。
+
+__src/app.tsx__ファイルを開き、``GET /users/{username}``リクエストに対するハンドラーを次のように修正します：
+
+[source,tsx,highlight=5..15,23]
+----
+app.get("/users/:username", async (c) => {
+  // ... 省略 ...
+  if (user == null) return c.notFound();
+
+  // biome-ignore lint/style/noNonNullAssertion: 常に1つのレコードを返す
+  const { following } = db
+    .prepare<unknown[], { following: number }>(
+      `
+      SELECT count(*) AS following
+      FROM follows
+      JOIN actors ON follows.follower_id = actors.id
+      WHERE actors.user_id = ?
+      `,
+    )
+    .get(user.id)!;
+  // ... 省略 ...
+  return c.html(
+    <Layout>
+      <Profile
+        name={user.name ?? user.username}
+        username={user.username}
+        handle={handle}
+        following={following}
+        followers={followers}
+      />
+      <PostList posts={posts} />
+    </Layout>,
+  );
+});
+----
+
+``GET /users/{username}/posts/{id}``リクエストハンドラーも修正します：
+
+[source,tsx,highlight=5..14,21]
+----
+app.get("/users/:username/posts/:id", (c) => {
+  // ... 省略 ...
+  if (post == null) return c.notFound();
+
+  // biome-ignore lint/style/noNonNullAssertion: 常に1つのレコードを返す
+  const { following, followers } = db
+    .prepare<unknown[], { following: number; followers: number }>(
+      `
+      SELECT sum(follows.follower_id = ?) AS following,
+             sum(follows.following_id = ?) AS followers
+      FROM follows
+      `,
+    )
+    .get(post.actor_id, post.actor_id)!;
+  return c.html(
+    <Layout>
+      <PostPage
+        name={post.name ?? post.username}
+        username={post.username}
+        handle={post.handle}
+        following={following}
+        followers={followers}
+        post={post}
+      />
+    </Layout>,
+  );
+});
+----
+
+全て修正が完了したら、ウェブブラウザで<http://localhost:8000/users/johndoe>ページを開いてみましょう：
+
+.プロフィールページ
+image::profile-page-5.png[プロフィールページ]
+
 == 著者とライセンス
 
 === 著者：洪 民憙（ホン・ミンヒ）
