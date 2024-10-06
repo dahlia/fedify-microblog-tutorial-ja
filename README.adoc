@@ -1256,6 +1256,227 @@ image::remote-profile.png[Mastodonで見るアクターのプロフィール]
 
 NOTE: ``fedify tunnel``コマンドは、しばらく使わないと自動的に接続が切断されます。その場合は、kbd:[Ctrl+C]キーを押して終了させ、``fedify tunnel 8000``コマンドを再入力して新しい接続を結ぶ必要があります。
 
+== インボックス
+
+ActivityPubにおいて、インボックス（inbox）はアクターが他のアクターからアクティビティを受け取るエンドポイントです。すべてのアクターは自身のインボックスを持っており、これはHTTP ``POST``リクエストを通じてアクティビティを受け取ることができるURLです。他のアクターがフォローリクエストを送ったり、投稿を作成したり、コメントを追加したりなどの相互作用を行う際、該当するアクティビティは受信者のインボックスに届けられます。サーバーはインボックスに入ってきたアクティビティを処理し、適切に応答することで他のアクターと通信し、連合ネットワークの一部として機能するようになります。
+
+インボックスは様々な種類のアクティビティを受信できますが、今はフォローリクエストを受け取ることから実装を始めましょう。
+
+=== テーブルの作成
+
+自分をフォローしているアクター（フォロワー）と自分がフォローしているアクター（フォロー中）を格納するために__src/schema.sql__ファイルに``follows``テーブルを定義します：
+
+[source,sql]
+----
+CREATE TABLE IF NOT EXISTS follows (
+  following_id INTEGER          REFERENCES actors (id),
+  follower_id  INTEGER          REFERENCES actors (id),
+  created      TEXT    NOT NULL DEFAULT (CURRENT_TIMESTAMP)
+                                CHECK (created <> ''),
+  PRIMARY KEY (following_id, follower_id)
+);
+----
+
+今回も__src/schema.sql__を実行して``follows``テーブルを作成しましょう：
+
+[source,console]
+$ sqlite3 microblog.sqlite3 < src/schema.sql
+
+__src/schema.ts__ファイルを開き、``follows``テーブルに保存されるレコードをJavaScriptで表現するための型も定義します：
+
+[source,typescript]
+----
+export interface Follow {
+  following_id: number;
+  follower_id: number;
+  created: string;
+}
+----
+
+=== ``Follow``アクティビティの受信
+
+これでインボックスを実装する番です。実は、すでに__src/federation.ts__ファイルに次のようなコードを書いていました：
+
+[source,typescript]
+federation.setInboxListeners("/users/{identifier}/inbox", "/inbox");
+
+上記のコードを修正する前に、Fedifyが提供する``Accept``および``Follow``クラスと``getActorHandle()``関数を``import``します：
+
+[source,typescript,highlight=2,4,9]
+----
+import {
+  Accept,
+  Endpoints,
+  Follow,
+  Person,
+  createFederation,
+  exportJwk,
+  generateCryptoKeyPair,
+  getActorHandle,
+  importJwk,
+} from "@fedify/fedify";
+----
+
+そして``setInboxListeners()``メソッドを呼び出すコードを以下のように修正します：
+
+[source,typescript]
+----
+federation
+  .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  .on(Follow, async (ctx, follow) => {
+    if (follow.objectId == null) {
+      logger.debug("The Follow object does not have an object: {follow}", {
+        follow,
+      });
+      return;
+    }
+    const object = ctx.parseUri(follow.objectId);
+    if (object == null || object.type !== "actor") {
+      logger.debug("The Follow object's object is not an actor: {follow}", {
+        follow,
+      });
+      return;
+    }
+    const follower = await follow.getActor();
+    if (follower?.id == null || follower.inboxId == null) {
+      logger.debug("The Follow object does not have an actor: {follow}", {
+        follow,
+      });
+      return;
+    }
+    const followingId = db
+      .prepare<unknown[], Actor>(
+        `
+        SELECT * FROM actors
+        JOIN users ON users.id = actors.user_id
+        WHERE users.username = ?
+        `,
+      )
+      .get(object.identifier)?.id;
+    if (followingId == null) {
+      logger.debug(
+        "Failed to find the actor to follow in the database: {object}",
+        { object },
+      );
+    }
+    const followerId = db
+      .prepare<unknown[], Actor>(
+        `
+        -- フォロワーアクターレコードを新規追加するか、既にあれば更新
+        INSERT INTO actors (uri, handle, name, inbox_url, shared_inbox_url, url)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT (uri) DO UPDATE SET
+          handle = excluded.handle,
+          name = excluded.name,
+          inbox_url = excluded.inbox_url,
+          shared_inbox_url = excluded.shared_inbox_url,
+          url = excluded.url
+        WHERE
+          actors.uri = excluded.uri
+        RETURNING *
+        `,
+      )
+      .get(
+        follower.id.href,
+        await getActorHandle(follower),
+        follower.name?.toString(),
+        follower.inboxId.href,
+        follower.endpoints?.sharedInbox?.href,
+        follower.url?.href,
+      )?.id;
+    db.prepare(
+      "INSERT INTO follows (following_id, follower_id) VALUES (?, ?)",
+    ).run(followingId, followerId);
+    const accept = new Accept({
+      actor: follow.objectId,
+      to: follow.actorId,
+      object: follow,
+    });
+    await ctx.sendActivity(object, follower, accept);
+  });
+----
+
+さて、コードをじっくり見てみましょう。``on()``メソッドは特定の種類のアクティビティが受信された時に取るべき行動を定義します。ここでは、フォローリクエストを意味する``Follow``アクティビティが受信された時にデータベースにフォロワー情報を記録した後、フォローリクエストを送ったアクターに対して承諾を意味する``Accept(Follow)``アクティビティを返信として送るコードを作成しました。
+
+``follow.objectId``にはフォロー対象のアクターのURIが入っているはずです。``parseUri()``メソッドを通じて、この中に入っているURIが我々が作成したアクターを指しているかを確認します。
+
+``getActorHandle()``関数は与えられたアクターオブジェクトからフェディバースハンドルを取得して文字列を返します。
+
+フォローリクエストを送ったアクターに関する情報が``actors``テーブルにまだない場合は、まずレコードを追加します。すでにレコードがある場合は最新のデータで更新します。その後、``follows``テーブルにフォロワーを追加します。
+
+データベースへの記録が完了すると、``sendActivity()``メソッドを使ってアクティビティを送ったアクターに``Accept(Follow)``アクティビティを返信として送ります。第一パラメータに送信者、第二パラメータに受信者、第三パラメータに送信するアクティビティオブジェクトを受け取ります。
+
+=== ActivityPub.Academy
+
+さて、それではフォローリクエストが正しく受信されるか確認しましょう。
+
+通常のMastodonサーバーでテストしても問題ありませんが、アクティビティがどのように行き来するか具体的に確認できるlink:https://activitypub.academy/[ActivityPub.Academy]サーバーを利用することにします。ActivityPub.Academyは教育およびデバッグ目的の特殊なMastodonサーバーで、クリック一つで簡単に一時的なアカウントを作成できます。
+
+.ActivityPub.Academyの最初のページ
+image::academy.jpg[ActivityPub.Academyの最初のページ]
+
+プライバシーポリシーに同意した後、btn:[登録する]ボタンを押して新しいアカウントを作成します。作成されたアカウントはランダムに生成された名前とハンドルを持ち、一日が経過すると自動的に消えます。代わりに、アカウントは何度でも新しく作成できます。
+
+ログインが完了したら、画面の左上にある検索ボックスに我々が作成したアクターのハンドルを貼り付けて検索します：
+
+.ActivityPub.Academyで我々が作成したアクターのハンドルで検索した結果
+image::academy-search-results.png[ActivityPub.Academyで我々が作成したアクターのハンドルで検索した結果]
+
+我々が作成したアクターが検索結果に表示されたら、右側にあるフォローボタンを押してフォローリクエストを送ります。そして右側のメニューからbtn:[Activity Log]をクリックします：
+
+.ActivityPub.AcademyのActivity Log
+image::activity-log.png[ActivityPub.AcademyのActivity Log]
+
+すると、先ほどフォローボタンを押したことでActivityPub.Academyサーバーから我々が作成したアクターのインボックスに``Follow``アクティビティが送信されたという表示が見えます。右下のbtn:[show source]をクリックするとアクティビティの内容まで見ることができます：
+
+.Activity Logでbtn:[show source]を押した画面
+image::activity-log-2.png[Activity Logでshow sourceを押した画面]
+
+=== テスト
+
+アクティビティがきちんと送信されたことを確認したので、実際に我々が書いたインボックスコードがうまく動作したか確認する番です。まず`follows`テーブルにレコードがきちんと作成されたか見てみましょう：
+
+[source,console]
+$ echo "SELECT * FROM follows;" | sqlite3 -table microblog.sqlite3
+
+フォローリクエストがきちんと処理されていれば、次のような結果が出力されるはずです（もちろん、時刻は異なるでしょう）：
+
+[cols="1,1,1"]
+|===
+| `following_id` | `follower_id` | `created`
+
+| `1`
+| `2`
+| `2024-09-01 10:19:41`
+|===
+
+果たして``actors``テーブルにも新しいレコードができたか確認してみましょう：
+
+[source,console]
+$ echo "SELECT * FROM actors WHERE id > 1;" | sqlite3 -table microblog.sqlite3
+
+[cols="1,1,1,1,1,1,1,1,1"]
+|===
+| `id` | `user_id` | `uri` | `handle` | `name` | `inbox_url` | `shared_inbox_url` | `url` | `created`
+
+|`2`
+|
+|`https://activitypub.academy/users/dobussia_dovornath`
+|`@dobussia_dovornath@activitypub.academy`
+|`Dobussia Dovornath`
+|`https://activitypub.academy/users/dobussia_dovornath/inbox`
+|`https://activitypub.academy/inbox`
+|`https://activitypub.academy/@dobussia_dovornath`
+|`2024-09-01 10:19:41`
+|===
+
+再び、ActivityPub.AcademyのActivity Logを見てみましょう。我々が作成したアクターから送られた``Accept(Follow)``アクティビティがきちんと到着していれば、以下のように表示されるはずです：
+
+.Activity Logに表示された``Accept(Follow)``アクティビティ
+image::activity-log-3.png[Activity Logに表示されたAccept(Follow)アクティビティ]
+
+さて、これで皆さんは初めてActivityPubを通じた相互作用を実装しました！
+
 == 著者とライセンス
 
 === 著者：洪 民憙（ホン・ミンヒ）
