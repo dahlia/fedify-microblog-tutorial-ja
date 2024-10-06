@@ -15,6 +15,9 @@ pushd "$(dirname "$0")/fonts"
 if [[ ! -f NotoSerifCJKjp-VF.ttf ]]; then
   wget https://github.com/notofonts/noto-cjk/raw/refs/heads/main/Serif/Variable/TTF/NotoSerifCJKjp-VF.ttf
 fi
+if [[ ! -f NotoSansCJKjp-VF.ttf ]]; then
+  wget https://github.com/notofonts/noto-cjk/raw/refs/heads/main/Sans/Variable/TTF/NotoSansCJKjp-VF.ttf
+fi
 if [[ ! -f NotoSansMonoCJKjp-VF.ttf ]]; then
   wget https://github.com/notofonts/noto-cjk/raw/refs/heads/main/Sans/Variable/TTF/Mono/NotoSansMonoCJKjp-VF.ttf
 fi

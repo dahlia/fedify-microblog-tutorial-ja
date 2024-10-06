@@ -6,6 +6,7 @@ font:
   catalog:
     merge: true
     Noto Serif JP: NotoSerifCJKjp-VF.ttf
+    Noto Sans JP: NotoSansCJKjp-VF.ttf
     Noto Sans Mono JP: NotoSansMonoCJKjp-VF.ttf
     Noto Sans Symbols 2: NotoSansSymbols2-Regular.ttf
   fallbacks: [Noto Sans Symbols 2, Noto Serif]
@@ -14,6 +15,8 @@ page:
 base:
   text-align: left
   font-family: Noto Serif JP
+heading:
+  font-family: Noto Sans JP
 codespan:
   font-family: Noto Sans Mono JP
 code:
