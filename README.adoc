@@ -967,3 +967,17 @@ Person {
   inbox: URL "http://localhost:8000/users/johndoe/inbox",
   endpoints: Endpoints { sharedInbox: URL "http://localhost:8000/inbox" }
 }
+
+== 著者とライセンス
+
+=== 著者：洪 民憙（ホン・ミンヒ）
+
+1988年ソウル生まれ。2000年からウェブ開発を始め、主にPython、Haskell、C#、TypeScript等の言語を使用。オープンソースとフェディバースの熱烈な支持者であり、ActivityPubサーバーフレームワークであるFedifyと、Fedifyベースの一人用ActivityPub実装であるHolloを開発。
+
+- ウェブサイト：<https://hongminhee.org/>
+- フェディバース（日本語）：link:https://fedibird.com/@hongminhee[+@hongminhee@fedibird.com+]
+- フェディバース（英語）：link:https://fosstodon.org/@hongminhee[+@hongminhee@fosstodon.org+]
+
+=== ライセンス
+
+この作業はlink:https://creativecommons.org/licenses/by-sa/4.0/deed.ja[クリエイティブ・コモンズ表示-継承4.0国際ライセンス]の下に提供されています。
