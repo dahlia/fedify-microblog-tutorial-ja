@@ -1434,7 +1434,7 @@ image::activity-log-2.png[Activity Logでshow sourceを押した画面]
 
 === テスト
 
-アクティビティがきちんと送信されたことを確認したので、実際に我々が書いたインボックスコードがうまく動作したか確認する番です。まず`follows`テーブルにレコードがきちんと作成されたか見てみましょう：
+アクティビティがきちんと送信されたことを確認したので、実際に我々が書いたインボックスコードがうまく動作したか確認する番です。まず``follows``テーブルにレコードがきちんと作成されたか見てみましょう：
 
 [source,console]
 $ echo "SELECT * FROM follows;" | sqlite3 -table microblog.sqlite3
@@ -1764,6 +1764,167 @@ app.get("/users/:username", async (c) => {
 
 .変更されたプロフィールページ
 image::profile-page-3.png[変更されたプロフィールページ]
+
+== フォロワーコレクション
+
+しかし、一つ問題があります。ActivityPub.Academy以外の他のMastodonサーバーから我々が作成したアクターを照会してみましょう。（照会方法はもうご存知ですよね？公開インターネットに露出された状態で、アクターのハンドルをMastodonの検索ボックスに入力すれば良いのです）Mastodonで我々が作成したアクターのプロフィールを見ると、おそらく奇妙な点に気づくでしょう：
+
+.Mastodonで照会した我々が作成したアクターのプロフィール
+image::remote-profile-2.png[Mastodonで照会した我々が作成したアクターのプロフィール]
+
+フォロワー数が0と表示されているのです。これは、我々が作成したアクターがフォロワーリストをActivityPubを通じて公開していないためです。ActivityPubでフォロワーリストを公開するには、フォロワーコレクションを定義する必要があります。
+
+__src/federation.ts__ファイルを開いて、Fedifyが提供する``Recipient``型を``import``します：
+
+[source,typescript,highlight=12]
+----
+import {
+  Accept,
+  Endpoints,
+  Follow,
+  Person,
+  Undo,
+  createFederation,
+  exportJwk,
+  generateCryptoKeyPair,
+  getActorHandle,
+  importJwk,
+  type Recipient,
+} from "@fedify/fedify";
+----
+
+そして下の方にフォロワーコレクションディスパッチャーを追加します：
+
+[source,typescript]
+----
+federation
+  .setFollowersDispatcher(
+    "/users/{identifier}/followers",
+    (ctx, identifier, cursor) => {
+      const followers = db
+        .prepare<unknown[], Actor>(
+          `
+          SELECT followers.*
+          FROM follows
+          JOIN actors AS followers ON follows.follower_id = followers.id
+          JOIN actors AS following ON follows.following_id = following.id
+          JOIN users ON users.id = following.user_id
+          WHERE users.username = ?
+          ORDER BY follows.created DESC
+          `,
+        )
+        .all(identifier);
+      const items: Recipient[] = followers.map((f) => ({
+        id: new URL(f.uri),
+        inboxId: new URL(f.inbox_url),
+        endpoints:
+          f.shared_inbox_url == null
+            ? null
+            : { sharedInbox: new URL(f.shared_inbox_url) },
+      }));
+      return { items };
+    },
+  )
+  .setCounter((ctx, identifier) => {
+    const result = db
+      .prepare<unknown[], { cnt: number }>(
+        `
+        SELECT count(*) AS cnt
+        FROM follows
+        JOIN actors ON actors.id = follows.following_id
+        JOIN users ON users.id = actors.user_id
+        WHERE users.username = ?
+        `,
+      )
+      .get(identifier);
+    return result == null ? 0 : result.cnt;
+  });
+----
+
+``setFollowersDispatcher()``メソッドでは、``GET /users/{identifier}/followers``リクエストが来た時に応答するフォロワーコレクションオブジェクトを作成します。SQLが少し長くなっていますが、整理すると``identifier``パラメータで入ってきたユーザー名をフォローしているアクターのリストを取得しているのです。``items``には``Recipient``オブジェクトを含めますが、``Recipient``型は次のような形をしています：
+
+[source,typescript]
+----
+export interface Recipient {
+  readonly id: URL | null;       // <1>
+  readonly inboxId: URL | null;  // <2>
+  readonly endpoints?: {
+    sharedInbox: URL | null;     // <3>
+  } | null;
+}
+----
+<1> ``id``属性にはアクターの一意なIRIが入り、
+<2> ``inboxId``にはアクターの個人インボックスURLが入ります。
+<3> ``endpoints.sharedInbox``にはアクターの共有インボックスURLが入ります。
+
+我々は``actors``テーブルにそれらの情報をすべて含んでいるので、その情報で``items``配列を埋めることができます。
+
+``setCounter()``メソッドではフォロワーコレクションの全体数量を求めます。ここでもSQLが少し複雑ですが、要約すると``identifier``パラメータで入ってきたユーザー名をフォローしているアクターの数を求めているのです。
+
+それではフォロワーコレクションがうまく動作するか確認するために、``fedify lookup``コマンドを使用しましょう：
+
+[source,console]
+$ fedify lookup http://localhost:8000/users/johndoe/followers
+
+正しく実装されていれば以下のような結果が出るはずです：
+
+[listing]
+----
+✔ Looking up the object...
+OrderedCollection {
+  totalItems: 1,
+  items: [ URL "https://activitypub.academy/users/dobussia_dovornath" ]
+}
+----
+
+しかし、このようにフォロワーコレクションを作成しただけでは、他のサーバーがフォロワーコレクションがどこにあるのか知ることができません。そのため、アクターディスパッチャーでフォロワーコレクションにリンクを張る必要があります：
+
+[source,typescript,highlight=6]
+----
+federation
+  .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+    // ... 省略 ...
+    return new Person({
+      // ... 省略 ...
+      followers: ctx.getFollowersUri(identifier),
+    });
+  })
+----
+
+アクターも``fedify lookup``で照会してみましょう：
+
+[source,console]
+$ fedify lookup http://localhost:8000/users/johndoe
+
+以下のように結果に``"followers"``属性が含まれていれば成功です：
+
+[listing]
+----
+✔ Looking up the object...
+Person {
+  ... 省略 ...
+  inbox: URL "http://localhost:8000/users/johndoe/inbox",
+  followers: URL "http://localhost:8000/users/johndoe/followers",
+  endpoints: Endpoints { sharedInbox: URL "http://localhost:8000/inbox" }
+}
+----
+
+それでは再びMastodonで我々が作成したアクターを照会してみましょう。しかし、その結果は少し落胆させられるかもしれません：
+
+.Mastodonで再度照会した我々が作成したアクターのプロフィール
+image::remote-profile-2.png[Mastodonで再度照会した我々が作成したアクターのプロフィール]
+
+フォロワー数は依然として0と表示されています。これは、Mastodonが他のサーバーのアクター情報をキャッシュ（cache）しているためです。これを更新する方法はありますが、kbd:[F5]キーを押すように簡単ではありません：
+
+- 一つの方法は、一週間待つことです。Mastodonは他のサーバーのアクター情報を含むキャッシュを最後の更新から7日が経過すると削除するからです。
+
+- もう一つの方法は、``Update``アクティビティを送信することですが、これには面倒なコーディングが必要です。
+
+- あるいは、まだキャッシュされていない他のMastodonサーバーで照会してみるのも一つの方法でしょう。
+
+- 最後の方法は、``fedify tunnel``を一度終了して再起動し、新しい一時ドメインを割り当てることです。
+
+皆さんが他のMastodonサーバーで正確なフォロワー数が表示されるのを直接確認したい場合は、私が列挙した方法のいずれかを試してみてください。
 
 == 著者とライセンス
 
