@@ -17,21 +17,56 @@
 
 == 序文
 
-NOTE: もしlink:https://ja.wikipedia.org/wiki/Fediverse[フェディバース]（fediverse）footnote:[Mastodon、​Misskey、​Lemmy、​Pixelfed、​PeerTubeなど、​フェディバースのネットワークのいくつかはすでにご存知かもしれない。​ ]やlink:https://activitypub.rocks/[ActivityPub]といった用語に馴染みがない場合は、​関連する検索をもう少し行ってからこのチュートリアルに従うことをお勧めします。
+[TIP]
+====
+本書はAsciiDocで組版されており、​以下のGitHubリポジトリからソースコードとPDF本を入手できます：
+
+<https://github.com/dahlia/fedify-microblog-tutorial-ja>
+====
+
+このチュートリアルに入る前に、​フェディバースとActivityPubについて簡単に説明しましょう。
+
+=== フェディバースとは？
+
+link:https://ja.wikipedia.org/wiki/Fediverse[フェディバース]（fediverse）は、​“federation”（連合）と“universe”（宇宙）を組み合わせた造語で、​相互にやり取りができる分散型のソーシャルネットワークの集合体を指します。​従来の中央集権型のソーシャルメディアプラットフォーム（例：X、​Facebook）とは異なり、​フェディバースは多数の独立したサーバー（インスタンス）で構成されています。
+
+フェディバースの主な特徴：
+
+- **分散型**：単一の企業や団体が管理するのではなく、​世界中の個人や組織が運営する多数のサーバーで構成されています。
+- **相互運用性**：異なるサーバー上のユーザーが相互にコミュニケーションを取ることができます。
+- **オープンソース**：多くのフェディバースソフトウェアはオープンソースで、​誰でも自由に使用​・​改変できます。
+- **データの自己管理**：ユーザーは自分のデータをより直接的に管理できます。
+
+フェディバースの代表的なソフトウェアには、​link:https://joinmastodon.org/ja[Mastodon]、​Metaのlink:https://www.threads.net/[Threads]、​link:https://misskey-hub.net/ja/[Misskey]、​link:https://pixelfed.org/[Pixelfed]などがあります。
+
+=== ActivityPubとは？
+
+link:https://activitypub.rocks/[ActivityPub]は、​​フェディバースを支える重要な技術標準の一つです。​​これは、​​ソーシャルネットワーキングプロトコルであり、​​異なるサーバー間でのアクティビティ（投稿、​​コメント、​​いいね等）の共有方法を定義しています。
+
+ActivityPubの主な特徴：
+
+- **W3C勧告**：World Wide Web Consortium（W3C）によって標準化されています。
+- **クライアント-サーバー通信**：ユーザーのクライアントアプリとサーバー間の通信を定義します。
+- **サーバー間通信**：異なるサーバー間でのアクティビティの配信方法を規定します。
+- **JSON-LD形式**：データはJSON for Linked Data （JSON-LD）形式で表現されます。
+
+ActivityPubを採用することで、​異なるソフトウェア間での相互運用性が実現され、​ユーザーは自分の選んだサービスを使いながら、​他のサービスのユーザーとコミュニケーションを取ることができます。
 
 このチュートリアルでは、​ActivityPubサーバーフレームワークであるlink:https://fedify.dev/[Fedify]を使用して、​link:https://joinmastodon.org/ja[Mastodon]やlink:https://misskey-hub.net/ja/[Misskey]のようなActivityPubプロトコルを実装するlink:https://ja.wikipedia.org/wiki/%E3%83%9F%E3%83%8B%E3%83%96%E3%83%AD%E3%82%B0[マイクロブログ]（microblog）を作成します。​ このチュートリアルは、​Fedifyの基本的な動作原理を理解するよりも、​Fedifyの活用方法により焦点を当てています。
 
-.Fedifyのロゴ
-image::logo.svg[Fedifyのロゴ,width=100%,align=center]
+=== Fedifyとは？
 
-Fedifyは、​ActivityPubやその他の標準規格（総称して「フェディバース」と呼ばれる）を利用した連合サーバーアプリを作る為のTypeScriptライブラリです。​ 連合サーバーアプリを作る際の複雑さやボイラプレートコードを排除し、​ビジネスロジックやユーザーエクスペリエンスに集中できる様にすることを目的としています。
+.Fedifyのロゴ
+image::logo.svg[Fedifyのロゴ,width=50%,align=center]
+
+link:https://fedify.dev/[Fedify]は、​ActivityPubやその他の標準規格を利用した連合サーバーアプリを作る為のTypeScriptライブラリです。​ 連合サーバーアプリを作る際の複雑さやボイラプレートコードを排除し、​ビジネスロジックやユーザーエクスペリエンスに集中できる様にすることを目的としています。
 
 Fedifyプロジェクトについてもっとお知りになりたい方は、​以下の資料をご覧ください：
 
-- ウェブサイト：<https://fedify.dev/>
-- GitHub：<https://github.com/dahlia/fedify>
-- APIリファレンス：<https://jsr.io/@fedify/fedify>
-- 使用例：<https://github.com/dahlia/fedify/tree/main/examples>
+- **ウェブサイト**：<https://fedify.dev/>
+- **GitHub**：<https://github.com/dahlia/fedify>
+- **APIリファレンス**：<https://jsr.io/@fedify/fedify>
+- **使用例**：<https://github.com/dahlia/fedify/tree/main/examples>
 
 ご質問、​ご提案、​フィードバックなどございましたら、​お気軽にlink:https://github.com/dahlia/fedify/discussions[GitHub Discussions]にご参加いただくか、​フェディバースのlink:https://hollo.social/@fedify[@fedify@hollo.social]（日本語対応）までご連絡ください！
 
@@ -3218,6 +3253,6 @@ UPDATE actors SET name = 'Renamed' WHERE id = 1;
 
 本書はlink:https://creativecommons.org/licenses/by-sa/4.0/deed.ja[クリエイティブ・コモンズ表示-継承4.0国際ライセンス]の下に提供されています。
 
-本書はAsciiDocで組版されており、​以下のGitHubリポジトリからソースコードを入手できます：
+本書はAsciiDocで組版されており、​以下のGitHubリポジトリからソースコードとPDF本を入手できます：
 
 <https://github.com/dahlia/fedify-microblog-tutorial-ja>
