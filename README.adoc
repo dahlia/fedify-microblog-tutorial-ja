@@ -908,7 +908,7 @@ TIP: TypeScriptでは``A & B``は``A``型と同時に``B``型であるオブジ�
 最後に、​__src/federation.ts__ファイルを開き、​アクターディスパッチャーの下に次のコードを追加します：
 
 [source,typescript]
-federation.setInboxListeners("/users/{handle}/inbox", "/inbox");
+federation.setInboxListeners("/users/{identifier}/inbox", "/inbox");
 
 ``setInboxListeners()``メソッドは今のところ気にしないでください。​これもまたインボックスについて説明する際に一緒に扱うことにします。​ただ、​アカウント作成コードで使用した``getInboxUri()``メソッドが正しく動作するためには上記のコードが必要だという点だけ指摘しておきます。
 
@@ -930,7 +930,7 @@ import type { Actor, User } from "./schema.ts";
 
 [source,typescript,highlight=2..11,16..21]
 ----
-federation.setActorDispatcher("/users/{handle}", async (ctx, handle) => {
+federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
   const user = db
     .prepare<unknown[], User & Actor>(
       `
@@ -939,18 +939,18 @@ federation.setActorDispatcher("/users/{handle}", async (ctx, handle) => {
       WHERE users.username = ?
       `,
     )
-    .get(handle);
+    .get(identifier);
   if (user == null) return null;
 
   return new Person({
-    id: ctx.getActorUri(handle),
-    preferredUsername: handle,
+    id: ctx.getActorUri(identifier),
+    preferredUsername: identifier,
     name: user.name,
-    inbox: ctx.getInboxUri(handle),
+    inbox: ctx.getInboxUri(identifier),
     endpoints: new Endpoints({
       sharedInbox: ctx.getInboxUri(),
     }),
-    url: ctx.getActorUri(handle),
+    url: ctx.getActorUri(identifier),
   });
 });
 ----
@@ -961,7 +961,7 @@ federation.setActorDispatcher("/users/{handle}", async (ctx, handle) => {
 
 [TIP]
 ====
-目のいい方々は気づいたかもしれませんが、​HonoとFedify両方で``GET /users/{handle}``に対するハンドラを重複して定義しています。​では、​実際にそのリクエストを送信すると、​どちらが応答することになるでしょうか？答えは、​リクエストの``Accept``ヘッダーによって異なります。​``Accept: text/html``ヘッダーと一緒にリクエストを送信すると、​Hono側のリクエストハンドラが応答します。​``Accept: application/activity+json``ヘッダーと一緒にリクエストを送信すると、​Fedify側のリクエストハンドラが応答します。
+目のいい方々は気づいたかもしれませんが、​HonoとFedify両方で``GET /users/{identifier}``に対するハンドラを重複して定義しています。​では、​実際にそのリクエストを送信すると、​どちらが応答することになるでしょうか？答えは、​リクエストの``Accept``ヘッダーによって異なります。​``Accept: text/html``ヘッダーと一緒にリクエストを送信すると、​Hono側のリクエストハンドラが応答します。​``Accept: application/activity+json``ヘッダーと一緒にリクエストを送信すると、​Fedify側のリクエストハンドラが応答します。
 
 このようにリクエストの``Accept``ヘッダーに応じて異なる応答を返す方式をHTTPのlink:https://developer.mozilla.org/ja/docs/Web/HTTP/Content_negotiation[コンテンツネゴシエーション]（content negotiation）と呼び、​Fedify自体がコンテンツネゴシエーションを実装しています。​より具体的には、​すべてのリクエストは一度Fedifyを通過し、​ActivityPubに関連するリクエストでない場合は連携されたフレームワーク、​このチュートリアルではHonoにリクエストを渡すようになっています。
 ====
