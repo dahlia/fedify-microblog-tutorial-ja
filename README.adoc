@@ -664,7 +664,7 @@ image::profile-page.png[プロフィールページ,align=center]
 
 [TIP]
 ====
-フェディバースハンドル（fediverse handle）、​略してハンドルとは、​フェディバース内でアカウントを指す一意なアドレスのようなものです。​例えば``+@hongminhee@fedibird.com+``のような形をしています。​メールアドレスに似た形をしていますが、​実際の構成もメールアドレスに似ています。​最初に``@``が来て、​その後に名前、​そして再び``@``が来た後、​最後にアカウントが属するサーバーのドメイン名が来ます。​時々、​最初の``@``が省略されることもあります。
+フェディバースハンドル（fediverse handle）、​略してハンドルとは、​フェディバース内でアカウントを指す一意なアドレスのようなものです。​例えば``+@hongminhee@hollo.social+``のような形をしています。​メールアドレスに似た形をしていますが、​実際の構成もメールアドレスに似ています。​最初に``@``が来て、​その後に名前、​そして再び``@``が来た後、​最後にアカウントが属するサーバーのドメイン名が来ます。​時々、​最初の``@``が省略されることもあります。
 
 技術的には、​ハンドルはlink:https://datatracker.ietf.org/doc/html/rfc7033[WebFinger]とlink:https://datatracker.ietf.org/doc/html/rfc7565[`acct:` URI形式]という2つの標準で実装されています。​Fedifyがこれを実装しているため、​このチュートリアルを進める間は実装の詳細を知らなくても大丈夫です。
 ====
@@ -3246,8 +3246,7 @@ UPDATE actors SET name = 'Renamed' WHERE id = 1;
 
 - ウェブサイト：<https://hongminhee.org/>
 - メールアドレス：{email}
-- フェディバース（日本語）：link:https://fedibird.com/@hongminhee[+@hongminhee@fedibird.com+]
-- フェディバース（英語）：link:https://fosstodon.org/@hongminhee[+@hongminhee@fosstodon.org+]
+- フェディバース：link:https://hollo.social/@hongminhee[+@hongminhee@hollo.social+]
 
 === ライセンス
 
